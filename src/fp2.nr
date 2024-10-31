@@ -4,6 +4,7 @@ use bignum::BigNum;
 /// https://github.com/zkcrypto/bls12_381/blob/main/src/fp2.rs
 
 // c0 + c1*u
+// F_p / u^2 + 1
 pub struct Fp2 {
     c0: BLS12_381Fq,
     c1: BLS12_381Fq,
@@ -166,8 +167,9 @@ impl Fp2 {
             Self { c0: res_c0, c1: res_c1 }
         }
     }
-    // TODO
-    // mul_by_nonresidue
+
+    // (u+1) is a quadratric residue in Fp2
+    // returns self * (u+1)
     fn mul_by_nonresidue(self: Self) -> Self {
         // Multiply c0 + c1*u by u + 1:
         // (c0 + c1*u)(u + 1)
@@ -182,7 +184,7 @@ impl Fp2 {
         Fp2 { c0: self.c0, c1: self.c1.neg() }
     }
 
-    // frobenius_map
+    // returns self^p
     fn frobenius_map(self: Self) -> Self {
         // (c0 + c1*u)^p = c0^p + (c1*u)^p
         // and c0^p=c0, c1^p=c1, and u^p = -u, so the result is:

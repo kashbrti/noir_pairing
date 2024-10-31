@@ -1,6 +1,8 @@
 mod fp2;
+mod fp6;
 
 use fp2::Fp2;
+use fp6::Fp6;
 use bignum::BigNum;
 use noir_bigcurve::curves::bls12_381::BLS12_381Fq;
 
@@ -14,5 +16,6 @@ fn test_main() {
     let y: BLS12_381Fq = BigNum::new();
     let fp2_1 = Fp2 { c0: x, c1: y };
     let fp2_2 = Fp2 { c0: x, c1: y };
+    let fp6 = Fp6::zero();
     main(fp2_1, fp2_2);
 }
