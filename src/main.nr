@@ -1,8 +1,10 @@
 mod fp2;
 mod fp6;
+mod fp12;
 
 use fp2::Fp2;
 use fp6::Fp6;
+use fp12::Fp12;
 use bignum::BigNum;
 use noir_bigcurve::curves::bls12_381::BLS12_381Fq;
 

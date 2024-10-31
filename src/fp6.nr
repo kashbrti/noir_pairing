@@ -4,7 +4,7 @@ use bignum::BigNum;
 // https://github.com/zkcrypto/bls12_381/blob/main/src/fp6.rs
 
 // c0 + c1*v + c2*v^2
-// F_{p^2} / v^3 - u - 1
+// F_{p^6} =  F_{p^2} / v^3 - u - 1
 pub struct Fp6 {
     c0: Fp2,
     c1: Fp2,
@@ -32,6 +32,14 @@ impl Fp6 {
 
     fn add(self: Self, other: Self) -> Self {
         Self { c0: self.c0.add(other.c0), c1: self.c1.add(other.c1), c2: self.c2.add(other.c2) }
+    }
+
+    fn sub(self: Self, other: Self) -> Self {
+        Self { c0: self.c0.sub(other.c0), c1: self.c1.sub(other.c1), c2: self.c2.sub(other.c2) }
+    }
+
+    fn neg(self: Self) -> Self {
+        Self { c0: self.c0.neg(), c1: self.c1.neg(), c2: self.c2.neg() }
     }
 
     pub fn mul_by_1(self: Self, c1: Fp2) -> Fp6 {
@@ -116,7 +124,7 @@ impl Fp6 {
     // return multiplication a*b
     fn mul_interleaved(a: Self, b: Self) -> Self {
         unsafe {
-          // Unconstrained calculations first
+            // Unconstrained calculations first
             //   result_c0_0 = a00 * b00 - a01 * b01 + a10 * b20 - a11 * b21 + a20 * b10 - a21 * b11
             //                                        - a10 * b21 - a11 * b20 - a20 * b11 - a21 * b10.
             //               = a00 * b00 - a01 * b01 + a10 * (b20 - b21) - a11 * (b20 + b21)
@@ -338,6 +346,10 @@ impl Fp6 {
                 c2: Fp2 { c0: result_c2_0, c1: result_c2_1 }
             }
         }
+    }
+
+    fn mul(self: Self, other: Self) -> Self {
+        self.mul_interleaved(other)
     }
 
     pub fn square(self: Self) -> Self {
@@ -631,6 +643,45 @@ fn test_arithmetic() {
         )
     };
 
+    let d = Fp6 {
+        c0: Fp2::new(
+            BigNum {
+            limbs: [
+                0x1bf849df18fa4b181e5ccd88d00322, 0xa873e3f09b7c2381a8fb576607f08, 0xb93bad407b1a2137e9139fd1d02701, 0x11fec3
+            ]
+        },
+            BigNum {
+            limbs: [
+                0x6fc4a038fe6225c716e715a8693747, 0x42cca14b682ed6eadd856234d489fe, 0xd0bb60bb40be57f29e4f5c7bae0c1b, 0x1bdb31
+            ]
+        }
+        ),
+        c1: Fp2::new(
+            BigNum {
+            limbs: [
+                0xfd26131772a6aacc89a8241f7251f, 0xc45e17aa2cd060e622199ec81811b6, 0x4ea2f446bcd8021699feb458b9f171, 0x94424
+            ]
+        },
+            BigNum {
+            limbs: [
+                0x6d68ddd1cd3385ae17b186d969614, 0x62f219bc2846c05b32bfa068733b7, 0x22b83f770d5e2099c98826a54e7567, 0x99d2a
+            ]
+        }
+        ),
+        c2: Fp2::new(
+            BigNum {
+            limbs: [
+                0x949ec32b351b88e631bd6142d69083, 0x1a207b24276583ac59736aed91e250, 0xaa69afa41da815ae5115132007b458, 0x4baae
+            ]
+        },
+            BigNum {
+            limbs: [
+                0xe1c4dc1304bf3b3e48eb83a8b5d3d3, 0xe41bccfa304778371063dbcad7d778, 0x7c6b7dca8744013ed4503ba6c430f3, 0x17e9f5
+            ]
+        }
+        )
+    };
+
     let a_square = a.square();
     let b_square = b.square();
     let c_square = c.square();
@@ -647,4 +698,9 @@ fn test_arithmetic() {
     let rhs = (c.mul_interleaved(c).mul_interleaved(a)).add(c.mul_interleaved(c).mul_interleaved(b));
 
     assert(lhs.eq(rhs));
+
+    // (a+b) * d = a*d + b*d
+    let lhs1 = (a.add(b)).mul(d);
+    let rhs1 = (a.mul(d)).add(b.mul(d));
+    assert(lhs1.eq(rhs1));
 }
