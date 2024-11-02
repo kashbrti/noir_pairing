@@ -1,6 +1,7 @@
 mod fp2;
 mod fp6;
 mod fp12;
+mod pairings;
 
 use fp2::Fp2;
 use fp6::Fp6;

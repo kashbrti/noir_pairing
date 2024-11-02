@@ -133,6 +133,20 @@ impl Fp12 {
         t = t.invert();
         Fp12 { c0: self.c0.mul(t), c1: self.c1.mul(t.neg()) }
     }
+
+    fn mul_by_014(self: Self, c0: Fp2, c1: Fp2, c4: Fp2) -> Fp12 {
+        let aa = self.c0.mul_by_01(c0, c1);
+        let bb = self.c1.mul_by_1(c4);
+        let o = c1.add(c4);
+        let mut c1 = self.c1.add(self.c0);
+        c1 = c1.mul_by_01(c0, o);
+        c1 = c1.sub(aa).sub(bb);
+        let mut c0 = bb;
+        c0 = c0.mul_by_nonresidue();
+        c0 = c0.add(aa);
+
+        Fp12 { c0, c1 }
+    }
 }
 
 #[test]
