@@ -50,9 +50,9 @@ impl Fp6 {
         let a_a = self.c0.mul(c0);
         let b_b = self.c1.mul(c1);
 
-        let t1 = (self.c2.mul(c1)).mul_by_nonresidue().add(a_a);
+        let t1 = ((self.c2.mul(c1)).mul_by_nonresidue()).add(a_a);
 
-        let t2 = (c0.add(c1)).mul((self.c0.add(self.c1)).sub(a_a).sub(b_b));
+        let t2 = (c0.add(c1)).mul((self.c0.add(self.c1))).sub(a_a).sub(b_b);
 
         let t3 = self.c2.mul(c0).add(b_b);
 

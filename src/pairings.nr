@@ -15,10 +15,10 @@ pub struct G2Projective {
 impl G2Projective {
     fn from_affine(p: G2Affine) -> Self {
         let mut z = Fp2::one();
-        if (p.x.eq(Fp2::one()) & p.y.eq(Fp2::zero())) {
+        if (p.infinity) {
             z = Fp2::zero();
         }
-        G2Projective { x: p.x, y: p.x, z }
+        G2Projective { x: p.x, y: p.y, z }
     }
 }
 
@@ -34,6 +34,90 @@ pub struct G1Affine {
   x: Fp,
   y: Fp,
   infinity: bool
+}
+
+impl G2Affine {
+    fn neg(self: Self) -> Self {
+        let mut y = self.y.neg();
+        if self.infinity {
+            y = Fp2::one();
+        }
+        G2Affine { x: self.x, y, infinity: self.infinity }
+    }
+
+    fn generator() -> Self {
+        G2Affine {
+            x: Fp2::new(
+                BigNum {
+                limbs: [
+                    0xac0326a805bbefd48056c8c121bdb8,
+                    0x7ad4fa403b02b4510b647ae3d1770b,
+                    0xb2f08f0a91260805272dc51051c6e4,
+                    0x24aa2
+                ]
+            },
+                BigNum {
+                limbs: [
+                    0x4cf11213945d57e5ac7d055d042b7e,
+                    0xd0d09920b61ab5da61bbdc7f504933,
+                    0x6052719f607dacd3a088274f65596b,
+                    0x13e02b
+                ]
+            }
+            ),
+            y: Fp2::new(
+                BigNum {
+                limbs: [
+                    0x3ac9cc3baca289e193548608b82801,
+                    0x9baa8cbdd3a76d429a695160d12c92,
+                    0x27727d6e118cc9cdc6da2e351aadfd,
+                    0xce5d5
+                ]
+            },
+                BigNum {
+                limbs: [
+                    0x370d275cec1da1aaa9075ff05f79be,
+                    0x287e85a763af267492ab572e99ab3f,
+                    0xa02ea734cc32acd2b02bc28b99cb3e,
+                    0x606c4
+                ]
+            }
+            ),
+            infinity: false
+        }
+    }
+}
+
+impl G1Affine {
+    fn generator() -> Self {
+        Self {
+            x: BigNum {
+                limbs: [
+                    0x55e83ff97a1aeffb3af00adb22c6bb,
+                    0x8c4f9774b905a14e3a3f171bac586c,
+                    0xa73197d7942695638c4fa9ac0fc368,
+                    0x17f1d3
+                ]
+            },
+            y: BigNum {
+                limbs: [
+                    0x3cc744a2888ae40caa232946c5e7e1,
+                    0xe095d5d00af600db18cb2c04b3edd0,
+                    0x81e3aaa0f1a09e30ed741d8ae4fcf5,
+                    0x8b3f4
+                ]
+            },
+            infinity: false
+        }
+    }
+
+    fn neg(self: Self) -> Self {
+        let mut y = self.y.neg();
+        if self.infinity {
+            y = BigNum::one();
+        }
+        Self { x: self.x, y, infinity: self.infinity }
+    }
 }
 
 // https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs#L709
@@ -112,14 +196,16 @@ fn ell(f: Fp12, coeffs: (Fp2, Fp2, Fp2), p: G1Affine) -> Fp12 {
 
     f.mul_by_014(
         coeffs.2,
-        Fp2 { c0: c0c0, c1: c0c1 },
-        Fp2 { c0: c1c0, c1: c1c1 }
+        Fp2 { c0: c1c0, c1: c1c1 },
+        Fp2 { c0: c0c0, c1: c0c1 }
     )
 }
 
 fn miller_loop(p: G1Affine, q: G2Affine) -> Fp12 {
-    let BLS_X = [
-        true, true, false, true, false, false, true, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false
+    // https://github.com/zkcrypto/bls12_381/blob/9ea427c0eb1a7e2ac16902a322aea156c496ddb0/src/lib.rs#L72
+    // expressed in whether bit is set of not for each index + reversed order
+    let BLS_X_reversed = [
+        true, true, false, true, false, false, true, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false
     ];
 
     let mut adder_cur = G2Projective::from_affine(q);
@@ -129,7 +215,7 @@ fn miller_loop(p: G1Affine, q: G2Affine) -> Fp12 {
     let mut found_one = false;
 
     for i in 0..64 {
-        let i_bool = BLS_X[i];
+        let i_bool = BLS_X_reversed[i];
         if !found_one {
             found_one = i_bool;
         } else {
@@ -159,7 +245,122 @@ fn miller_loop(p: G1Affine, q: G2Affine) -> Fp12 {
     f
 }
 
-#[test]
+// https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs#L50
+fn fp4_square(a: Fp2, b: Fp2) -> (Fp2, Fp2) {
+    let t0 = a.square();
+    let t1 = b.square();
+    let mut t2 = t1.mul_by_nonresidue();
+    let c0 = t2.add(t0);
+    t2 = a.add(b);
+    t2 = t2.square();
+    t2 = t2.sub(t0);
+    let c1 = t2.sub(t1);
+
+    (c0, c1)
+}
+
+// https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs#L66
+fn cyclotomic_square(f: Fp12) -> Fp12 {
+    let mut z0 = f.c0.c0;
+    let mut z4 = f.c0.c1;
+    let mut z3 = f.c0.c2;
+    let mut z2 = f.c1.c0;
+    let mut z1 = f.c1.c1;
+    let mut z5 = f.c1.c2;
+
+    let (t0, t1) = fp4_square(z0, z1);
+
+    z0 = t0.sub(z0);
+    z0 = z0.add(z0).add(t0);
+    z1 = t1.add(z1);
+    z1 = z1.add(z1).add(t1);
+
+    let (mut t0, t1) = fp4_square(z2, z3);
+    let (t2, t3) = fp4_square(z4, z5);
+
+    z4 = t0.sub(z4);
+    z4 = z4.add(z4).add(t0);
+
+    z5 = t1.add(z5);
+    z5 = z5.add(z5).add(t1);
+
+    t0 = t3.mul_by_nonresidue();
+    z2 = t0.add(z2);
+    z2 = z2.add(z2).add(t0);
+
+    z3 = t2.sub(z3);
+    z3 = z3.add(z3).add(t2);
+
+    Fp12 { c0: Fp6 { c0: z0, c1: z4, c2: z3 }, c1: Fp6 { c0: z2, c1: z1, c2: z5 } }
+}
+
+fn cycolotomic_exp(f: Fp12) -> Fp12 {
+    // https://github.com/zkcrypto/bls12_381/blob/9ea427c0eb1a7e2ac16902a322aea156c496ddb0/src/lib.rs#L72
+    // expressed in whether bit is set of not for each index + reversed order
+    let BLS_X_reversed = [
+        true, true, false, true, false, false, true, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false
+    ];
+
+    let mut tmp = Fp12::one();
+    let mut found_one = false;
+    for i in 0..64 {
+        if found_one {
+            tmp = cyclotomic_square(tmp);
+        } else {
+            found_one = BLS_X_reversed[i];
+        }
+
+        if BLS_X_reversed[i] {
+            tmp = tmp.mul(f);
+        }
+    }
+
+    tmp.conjugate()
+}
+
+impl Fp12 {
+    fn final_exponentiation(self: Self) -> Self {
+        let mut f = self;
+        let mut t0 = f.frobenius_map().frobenius_map().frobenius_map().frobenius_map().frobenius_map().frobenius_map();
+        // TODO check that inverse exists
+        let mut t1 = f.invert();
+        let mut t2 = t0.mul(t1);
+        t1 = t2;
+        t2 = t2.frobenius_map().frobenius_map();
+        t2 = t2.mul(t1);
+        t1 = cyclotomic_square(t2).conjugate();
+        let mut t3 = cycolotomic_exp(t2);
+        let mut t4 = cyclotomic_square(t3);
+        let mut t5 = t1.mul(t3);
+        t1 = cycolotomic_exp(t5);
+        t0 = cycolotomic_exp(t1);
+        let mut t6 = cycolotomic_exp(t0);
+        t6 = t6.mul(t4);
+        t4 = cycolotomic_exp(t6);
+        t5 = t5.conjugate();
+        t4 = t4.mul(t5).mul(t2);
+        t5 = t2.conjugate();
+        t1 = t1.mul(t2);
+        t1 = t1.frobenius_map().frobenius_map().frobenius_map();
+        t6 = t6.mul(t5);
+        t6 = t6.frobenius_map();
+        t3 = t3.mul(t0);
+        t3 = t3.frobenius_map().frobenius_map();
+        t3 = t3.mul(t1);
+        t3 = t3.mul(t6);
+        f = t3.mul(t4);
+        f
+    }
+}
+
+fn pairing(p: G1Affine, q: G2Affine) -> Fp12 {
+    // TODO add the identity check
+
+    let tmp = miller_loop(p, q);
+    tmp.final_exponentiation()
+}
+
+// #[test]
 fn test_doubling_step() {
     let generator = G2Projective {
         x: Fp2::new(
@@ -488,4 +689,113 @@ fn test_addition_step() {
     assert(res.0.eq(a));
     assert(res.1.eq(b));
     assert(res.2.eq(c));
+}
+
+// #[test]
+fn test_final_exponentiation() {
+    let t = Fp12::one();
+    let res = t.final_exponentiation();
+    assert(res.eq(Fp12::one()));
+}
+
+#[test]
+fn test_pairings() {
+    let g = G1Affine::generator();
+
+    let h = G2Affine::generator();
+
+    let first_pairing = pairing(g.neg(), h);
+    let second_pairing = pairing(g, h.neg());
+    assert(first_pairing.eq(second_pairing)); // passess!
+}
+
+// #[test]
+fn test_bilinearity() {
+  // TODO try with different values
+    let g = G1Affine {
+        x: BigNum {
+            limbs: [
+                0xfabb7be712b08862b6c9f3e9ff6ccc,
+                0xdb4476eb5e63dc7314183a309224d,
+                0x22fc235f054631617d5f134c6544f0,
+                0x845e2
+            ]
+        },
+        y: BigNum {
+            limbs: [
+                0xbd5303645f9b22e005f9e2409b286e,
+                0xce946b2e0489fbfdff1abb380f4d22,
+                0xe2ff06bfa6a8e879aed13e82a17f86,
+                0x362e6
+            ]
+        },
+        infinity: false
+    };
+
+    let h = G2Affine {
+        x: Fp2::new(
+            BigNum {
+            limbs: [
+                0xfb29f4c9b9f7aee559363b9545755c,
+                0xbc1390ea1411adbee0eec731b72471,
+                0x652b881bca2fe0b80fb53e5c6a8eee,
+                0x154358
+            ]
+        },
+            BigNum {
+            limbs: [
+                0x82d763ca4de753d2b3ee304205157,
+                0xfe44d89efc569c4bec0ee56c95428f,
+                0xac4740bb4f874bdd05a017cb1eb950,
+                0x1c656
+            ]
+        }
+        ),
+        y: Fp2::new(
+            BigNum {
+            limbs: [
+                0x23853393c1100055c5d34c423b3fd2,
+                0xf4f22fff37029a585bb1038166e5ce,
+                0xe508777c4881dfcf5df11b0425555f,
+                0xe3d19
+            ]
+        },
+            BigNum {
+            limbs: [
+                0x1ec46236ee424e72d540ab93e7627a,
+                0xf27c49db63114121eaae2ab56dcfad,
+                0xd24956daaba822362ec9157039e792,
+                0x193caf
+            ]
+        }
+        ),
+        infinity: false
+    };
+
+    let expected = G1Affine {
+        x: BigNum {
+            limbs: [
+                0xd7db4700715c7fc0a50d36e4d66c19,
+                0xab5afe0efc1e6faf7476e6b42bafdc,
+                0xf96908d5627e3dd1d3bb6f5476401,
+                0x9ee21
+            ]
+        },
+        y: BigNum {
+            limbs: [
+                0x6485cf916eac99502622e4752b19f4,
+                0x95a16b09abd95b4cbfedb2cbe87f7b,
+                0x981c52a89257acb922bf3ffd74a55f,
+                0x15878d
+            ]
+        },
+        infinity: false
+    };
+
+// G1Affine, G2Affine
+    let pairing_g_h = pairing(g, h);
+    let pairing_expected_id = pairing(expected, G2Affine::generator());
+    println(pairing_g_h);
+    println(pairing_expected_id);
+    assert(pairing_g_h.eq(pairing_expected_id));
 }
