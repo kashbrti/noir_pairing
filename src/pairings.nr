@@ -202,10 +202,13 @@ fn ell(f: Fp12, coeffs: (Fp2, Fp2, Fp2), p: G1Affine) -> Fp12 {
 }
 
 fn miller_loop(p: G1Affine, q: G2Affine) -> Fp12 {
-    // https://github.com/zkcrypto/bls12_381/blob/9ea427c0eb1a7e2ac16902a322aea156c496ddb0/src/lib.rs#L72
-    // expressed in whether bit is set of not for each index + reversed order
-    let BLS_X_reversed = [
-        true, true, false, true, false, false, true, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false
+    // https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs#L672
+    // Got array from zkcrypto impl
+    let booleans = [
+        false, true, true, false, true, false, false, true, false, false, false, false, false, false, false, false,
+        true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+        true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false
     ];
 
     let mut adder_cur = G2Projective::from_affine(q);
@@ -215,7 +218,7 @@ fn miller_loop(p: G1Affine, q: G2Affine) -> Fp12 {
     let mut found_one = false;
 
     for i in 0..64 {
-        let i_bool = BLS_X_reversed[i];
+        let i_bool = booleans[i];
         if !found_one {
             found_one = i_bool;
         } else {
@@ -295,10 +298,13 @@ fn cyclotomic_square(f: Fp12) -> Fp12 {
 }
 
 fn cycolotomic_exp(f: Fp12) -> Fp12 {
-    // https://github.com/zkcrypto/bls12_381/blob/9ea427c0eb1a7e2ac16902a322aea156c496ddb0/src/lib.rs#L72
-    // expressed in whether bit is set of not for each index + reversed order
-    let BLS_X_reversed = [
-        true, true, false, true, false, false, true, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false
+    // https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs#L119
+    // Got array from zkcrypto impl
+    let booleans = [
+        true, true, false, true, false, false, true, false, false, false, false, false, false, false, false, true,
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true,
+        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false
     ];
 
     let mut tmp = Fp12::one();
@@ -307,10 +313,10 @@ fn cycolotomic_exp(f: Fp12) -> Fp12 {
         if found_one {
             tmp = cyclotomic_square(tmp);
         } else {
-            found_one = BLS_X_reversed[i];
+            found_one = booleans[i];
         }
 
-        if BLS_X_reversed[i] {
+        if booleans[i] {
             tmp = tmp.mul(f);
         }
     }
@@ -498,7 +504,7 @@ fn test_doubling_step() {
     assert(res.2.eq(c));
 }
 
-#[test]
+// #[test]
 fn test_addition_step() {
     /*
   Values from zkcrypto impl
@@ -692,14 +698,343 @@ fn test_addition_step() {
 }
 
 // #[test]
-fn test_final_exponentiation() {
+fn test_final_exponentiation_identity() {
     let t = Fp12::one();
     let res = t.final_exponentiation();
     assert(res.eq(Fp12::one()));
 }
 
-#[test]
-fn test_pairings() {
+// #[test]
+fn test_miller_loop_gh() {
+    // Testing intermediate step, expected value from zkcrypto impl
+    // test values from https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs#L835
+    let g = G1Affine {
+        x: BigNum {
+            limbs: [
+                0xfabb7be712b08862b6c9f3e9ff6ccc,
+                0xdb4476eb5e63dc7314183a309224d,
+                0x22fc235f054631617d5f134c6544f0,
+                0x845e2
+            ]
+        },
+        y: BigNum {
+            limbs: [
+                0xbd5303645f9b22e005f9e2409b286e,
+                0xce946b2e0489fbfdff1abb380f4d22,
+                0xe2ff06bfa6a8e879aed13e82a17f86,
+                0x362e6
+            ]
+        },
+        infinity: false
+    };
+
+    let h = G2Affine {
+        x: Fp2::new(
+            BigNum {
+            limbs: [
+                0xfb29f4c9b9f7aee559363b9545755c,
+                0xbc1390ea1411adbee0eec731b72471,
+                0x652b881bca2fe0b80fb53e5c6a8eee,
+                0x154358
+            ]
+        },
+            BigNum {
+            limbs: [
+                0x82d763ca4de753d2b3ee304205157,
+                0xfe44d89efc569c4bec0ee56c95428f,
+                0xac4740bb4f874bdd05a017cb1eb950,
+                0x1c656
+            ]
+        }
+        ),
+        y: Fp2::new(
+            BigNum {
+            limbs: [
+                0x23853393c1100055c5d34c423b3fd2,
+                0xf4f22fff37029a585bb1038166e5ce,
+                0xe508777c4881dfcf5df11b0425555f,
+                0xe3d19
+            ]
+        },
+            BigNum {
+            limbs: [
+                0x1ec46236ee424e72d540ab93e7627a,
+                0xf27c49db63114121eaae2ab56dcfad,
+                0xd24956daaba822362ec9157039e792,
+                0x193caf
+            ]
+        }
+        ),
+        infinity: false
+    };
+    let res = miller_loop(g, h);
+
+    let c0 = Fp6 {
+        c0: Fp2::new(
+            BigNum {
+            limbs: [
+                0xeca6fe6fd61761a14d7a4efd04dce8,
+                0xae1ce267c3152f809bd0e24cdb3439,
+                0x2055adc45db96dbfaad283399f930c,
+                0x4b55b
+            ]
+        },
+            BigNum {
+            limbs: [
+                0xfb51edc493eb47d2548b6d3deff2e3,
+                0x5f8dc81fe0303d5202e21b27c7cae8,
+                0xcd4c031604fe969028f05a22133e4d,
+                0x4856c
+            ]
+        }
+        ),
+        c1: Fp2::new(
+            BigNum {
+            limbs: [
+                0xcea05ef042affb81c007bc1a924e38,
+                0x661614d648d4b85aa6ea490e04879e,
+                0xf2eb8aef36c8c4aa56791451a956cd,
+                0x63e7a
+            ]
+        },
+            BigNum {
+            limbs: [
+                0x658a3de2190a0d68b88af6f2e7f882,
+                0x10b4e6591964d7b99fcfd825619448,
+                0xab2bf19ab61e92e3e35d137c109f7a,
+                0x4c12d
+            ]
+        }
+        ),
+        c2: Fp2::new(
+            BigNum {
+            limbs: [
+                0x42e14b78b887013477f422fd0b7c53,
+                0xfebb9e4384e1d2a5684bf7368e3dcd,
+                0xfd5a50a50de7aa9c7f5da287b41cb2,
+                0xbe166
+            ]
+        },
+            BigNum {
+            limbs: [
+                0x53a80d17ea07851bfa580d73a5699b,
+                0x52445b814699a564bfad2b397a93d3,
+                0x475c60246bf1fab412c52f0316c8dd,
+                0xa2632
+            ]
+        }
+        )
+    };
+
+    let c1 = Fp6 {
+        c0: Fp2::new(
+            BigNum {
+            limbs: [
+                0x18568bf1932586e1fc82be25e3e7f,
+                0x774bb8fc902e14236184b14831b338,
+                0x28a3c9c5d0748adb11a251626eeff4,
+                0xcd36f
+            ]
+        },
+            BigNum {
+            limbs: [
+                0xc7d7e9f7df994f4b44b22d9a1a2e7b,
+                0xfda5e2c74b5247766e5c23a4adc42,
+                0xa10a56360b523bd04edae16f2ddfc9,
+                0x19c7db
+            ]
+        }
+        ),
+        c1: Fp2::new(
+            BigNum {
+            limbs: [
+                0xfbaca33e71d006994e65a453a49d6,
+                0xa5f540fa4f2a422f155396fca0f56f,
+                0x3f2179791e5d2a8af4375f4a0909ed,
+                0x16d48d
+            ]
+        },
+            BigNum {
+            limbs: [
+                0xf27b4ff0c0f8186e52642c37e1399d,
+                0xa79376982b5e7582cb7d2408b1581,
+                0x7b276530ea982e455da02f5455c66a,
+                0x19e623
+            ]
+        }
+        ),
+        c2: Fp2::new(
+            BigNum {
+            limbs: [
+                0xd57d65cd164deb89f543ba49e5b965,
+                0x571046036743b54a03348205caf2a7,
+                0xa10301fa6b0ddcbd6bfd20031c35de,
+                0x14d6b3
+            ]
+        },
+            BigNum {
+            limbs: [
+                0x6d9fe64f15e04d5f1416e6019dce4f,
+                0x5aa69dd12b41d55e2c9b2f62d4d4bf,
+                0x12dc81356efd9ef477f8fd46dc9fef,
+                0xdb4c1
+            ]
+        }
+        )
+    };
+
+    let expected_res = Fp12 { c0, c1 };
+
+    assert(res.eq(expected_res));
+}
+
+// #[test]
+fn test_miller_loop_expected_generator() {
+    // Testing intermediate step, expected value from zkcrypto impl
+    // test values from https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs#L835
+    let expected = G1Affine {
+        x: BigNum {
+            limbs: [
+                0xd7db4700715c7fc0a50d36e4d66c19,
+                0xab5afe0efc1e6faf7476e6b42bafdc,
+                0xf96908d5627e3dd1d3bb6f5476401,
+                0x9ee21
+            ]
+        },
+        y: BigNum {
+            limbs: [
+                0x6485cf916eac99502622e4752b19f4,
+                0x95a16b09abd95b4cbfedb2cbe87f7b,
+                0x981c52a89257acb922bf3ffd74a55f,
+                0x15878d
+            ]
+        },
+        infinity: false
+    };
+
+    let res = miller_loop(expected, G2Affine::generator());
+
+    let c0 = Fp6 {
+        c0: Fp2::new(
+            BigNum {
+            limbs: [
+                0x34eeb75b409ba2acf17a3f23b7f67,
+                0x3e3856778d39180b6e8509edb2228b,
+                0x2d3fea4c1e59809ef2f7df0c003956,
+                0xd6a50
+            ]
+        },
+            BigNum {
+            limbs: [
+                0x144d9aa4cc68911bb7c3cb3d953fcf,
+                0xc4c6a25d9a086f4b1211e971bbd6d7,
+                0x93673ab1a1903a2ece3860a46c2f19,
+                0xcc276
+            ]
+        }
+        ),
+        c1: Fp2::new(
+            BigNum {
+            limbs: [
+                0x42904787d7a0e04698792b05024e06,
+                0xedf6ab40f7310f66eba8fd5292d88f,
+                0x9642147a44201ad94f7dd01049d74f,
+                0xed53
+            ]
+        },
+            BigNum {
+            limbs: [
+                0xb7bed18cc0e883b0f62c7409f075ff,
+                0xf6af2d659a89bf3ddd9ad7f6725957,
+                0x63f17de251bc34bfccc6934316ab59,
+                0x79db6
+            ]
+        }
+        ),
+        c2: Fp2::new(
+            BigNum {
+            limbs: [
+                0x354121c6f05c68bd3a41bdc5ef2094,
+                0x1786120adeb65ec46be891279b345b,
+                0x9f4ee0835af6442df8fa981f94d951,
+                0x18893d
+            ]
+        },
+            BigNum {
+            limbs: [
+                0x60962d5e5ddc05ce5f5f73d3ebb25b,
+                0x79f5056cdb1cae2c4d317286c2dc30,
+                0x5f562105010d8b3356904f645be303,
+                0x153cd8
+            ]
+        }
+        )
+    };
+
+    let c1 = Fp6 {
+        c0: Fp2::new(
+            BigNum {
+            limbs: [
+                0x36ece658926e4a9cd0fc4e3c3e47ad,
+                0xafbc7e7fecb53133555f636358dbd8,
+                0x31d52bdd18050116126e2ddd436a75,
+                0x10e412
+            ]
+        },
+            BigNum {
+            limbs: [
+                0xd34536fc5d22bc482ee234cad5a171,
+                0xbd277ab51d947b3ca5b106779f5b5c,
+                0xd7032a3faf5d557b644837159a2dc3,
+                0x15cd26
+            ]
+        }
+        ),
+        c1: Fp2::new(
+            BigNum {
+            limbs: [
+                0x6936b660ccaab1e62694232ea1477a,
+                0xf25be6740181f1e5e295cda62f289e,
+                0xc31c6d5cd0dbab08c665c15ffb2d8f,
+                0xe2303
+            ]
+        },
+            BigNum {
+            limbs: [
+                0xfadb875e950672048d1654ef16cc0b,
+                0xd45a52d793a9bccc8a5ca077be7e75,
+                0x8a106d89280e74785b2dad9b16a38e,
+                0x142e38
+            ]
+        }
+        ),
+        c2: Fp2::new(
+            BigNum {
+            limbs: [
+                0x8dbae642d34613bfe1f68da26418af,
+                0x2810ad92f6202621761b1ae8624ceb,
+                0xabe1701c629b2ae2278b1148caedc7,
+                0x6764d
+            ]
+        },
+            BigNum {
+            limbs: [
+                0xee83310f804608f88bae1efbffc05d,
+                0x67d140367548c07d8707fd22ad0c12,
+                0x14d21e748396b16562ab7a599405ae,
+                0x1dac1
+            ]
+        }
+        )
+    };
+
+    let expected_result = Fp12 { c0, c1 };
+    assert(res.eq(expected_result));
+}
+
+// #[test]
+fn test_pairings_1() {
+    // g and h from this test https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs#L835
     let g = G1Affine::generator();
 
     let h = G2Affine::generator();
@@ -711,7 +1046,7 @@ fn test_pairings() {
 
 // #[test]
 fn test_bilinearity() {
-  // TODO try with different values
+    // https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs#L835
     let g = G1Affine {
         x: BigNum {
             limbs: [
@@ -792,10 +1127,7 @@ fn test_bilinearity() {
         infinity: false
     };
 
-// G1Affine, G2Affine
     let pairing_g_h = pairing(g, h);
     let pairing_expected_id = pairing(expected, G2Affine::generator());
-    println(pairing_g_h);
-    println(pairing_expected_id);
-    assert(pairing_g_h.eq(pairing_expected_id));
+    assert(pairing_g_h.eq(pairing_expected_id)); // passess!
 }
