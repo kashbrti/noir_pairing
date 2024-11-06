@@ -1,5 +1,4 @@
-use noir_bigcurve::curves::bls12_381::{BLS12_381Fq, BLS12_381_Params};
-use crate::fp2::Fp2;
+use crate::fp2::{Fp2, BLS12_381Fq};
 use crate::fp6::Fp6;
 use crate::fp12::Fp12;
 use bignum::BigNum;

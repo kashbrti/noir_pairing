@@ -1,7 +1,10 @@
-use noir_bigcurve::curves::bls12_381::{BLS12_381Fq, BLS12_381Fr};
 use bignum::BigNum;
+use bignum::fields::bls12_381Fq::BLS12_381_Fq_Params;
 
-/// https://github.com/zkcrypto/bls12_381/blob/main/src/fp2.rs
+// Parameter reference https://github.com/noir-lang/noir_bigcurve/blob/main/src/curves/bls12_381.nr#L60
+pub type BLS12_381Fq = BigNum<4, BLS12_381_Fq_Params>;
+
+// Code reference https://github.com/zkcrypto/bls12_381/blob/main/src/fp2.rs
 
 // c0 + c1*u
 // F_p / u^2 + 1
@@ -11,10 +14,6 @@ pub struct Fp2 {
 }
 
 impl Fp2 {
-    // fn from(c0: BLS12_381Fq) -> Self {
-    //     Fp2 { c0, c1: BigNum::new() }
-    // }
-
     fn new(c0: BLS12_381Fq, c1: BLS12_381Fq) -> Self {
         Fp2 { c0, c1 }
     }
