@@ -38,6 +38,20 @@ nargo test
 
 Note that a good amount of the tests are commented out because they take a fair amount of time (20-30 min) to run. For example `test_pairings_1` and `test_bilinearity` in `pairings.nr`. 
 
+## Benchmarks
+
+One pairing:
+- "acir_opcodes": 1.811.140
+- "circuit_size": 2.580.893
+
+For code snippet:
+```rust
+fn main(p: G1Affine, q: G2Affine) {
+    let res = pairing(p, q);
+}
+```
+
+
 ## Related Noir work
 - BLS12_381 Elliptic Curve Pairing and Signature Verification Library by @onurinanc: [repo](https://github.com/onurinanc/noir-bls-signature)
 - Noir BigCurve library: [repo](https://github.com/noir-lang/noir_bigcurve)
