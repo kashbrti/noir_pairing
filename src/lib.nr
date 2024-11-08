@@ -1,4 +1,4 @@
-mod fp2;
-mod fp6;
-mod fp12;
-mod pairings;
+pub mod fp2;
+pub mod fp6;
+pub mod fp12;
+pub mod pairings;
