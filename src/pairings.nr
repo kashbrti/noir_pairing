@@ -351,7 +351,7 @@ impl Fp12 {
 }
 
 pub fn pairing(p: G1Affine, q: G2Affine) -> Fp12 {
-  // If any of the inputs is infinity, the result is 1
+    // If any of the inputs is infinity, the result is 1
     if p.infinity | q.infinity {
         Fp12::one()
     } else {
@@ -624,15 +624,15 @@ fn test_final_exponentiation_identity() {
 
 #[test]
 fn test_pairing_identity() {
-  let p = G1Affine {
-    // x, y are irrelevant because infinity is set to true
-    x: BigNum::one(),
-    y: BigNum::one(),
-    infinity: true
-  };
+    let p = G1Affine {
+        // x, y are irrelevant because infinity is set to true
+        x: BigNum::one(),
+        y: BigNum::one(),
+        infinity: true
+    };
 
-  let expected_identity = pairing(p, G2Affine::generator());
-  assert(Fp12::one().eq(expected_identity));
+    let expected_identity = pairing(p, G2Affine::generator());
+    assert(Fp12::one().eq(expected_identity));
 }
 
 // #[test]
@@ -995,6 +995,102 @@ fn test_bilinearity() {
     };
 
     let pairing_g_h = pairing(g, h);
+    // Expected value from zkcrypto
+    // Gt(0x15cea6a78b89349dcd1c03695a74e72d3657af4ee2cf267337bc96363ef4a1c5d5d7a673cc3a3c1a1350043f99537d62 + 0x001701f60f3d4352c4d388c0f198854908c0e939719709c1b3f82d2a25cc7156a3838bc141e041c259849326fbd0839f*u + (0x171a6e4e0d608e6e6c8ac5ddcf8d6d2a950d06051e6b6c4d3feb6dc8dac2acadd345cadfb890454a2101a112f7471f0e + 0x03c68b88c25be6fd3611cc21c9968e4f87e541beeccc5170b8696a439bb666ad8a6608ab30ebc7dfe56eaf0dd9ab8439*u)*v + (0x1728d688caa8a671f90b55488e272f48c7c5ae32526d3635a5343eb02640358d9ac445c76a5d8f52f653bbaee04ba5ce + 0x05bfe708d381b066b83a883ba8251ce2ea6772cbde51e1322d82b2c8a026a2153f4822e20cb69b8b05003ee74e09cb48*u)*v^2 + (0x17b4a68dedcc04674e5f5739cf0d845ba801263f712ed4ddda59c1d9909148e3f28124ae770682c9b19233bf0bcfa00d + 0x164a54600cb2e24fec168f82542fbf98234dbb9ddf06503dc3c497da88b73db584ba19e685b1b398b51f40160e6c8f09*u + (0x0c214542fcc0cf10e3001fa5e82d398f6ba1ddd1ccdf133bfd75e033eae50aec66bd5e884b8c74d4c1c6ac7c01278ac5 + 0x0d7fcfdf3c1552ada42b7e0521bc2e7389436660c352ecbf2eedf30b77b6b501df302399e6240473af47abe56fc97478*u)*v + (0x130e7ce13260d601c89ee717acfd3d4e1d80f409dd2a5c38b176f0b64d3d0a224c502717270dfecf2b825ac24608215c + 0x14fd52fe9bfd08bbe23fcdf1d3bc5390c62e75a8786a72f8a343123a30a7c5f8d18508a21a2bf902f4db2c068913bc1c*u)*v^2)*w)
+    // Converted to Noir
+    let c0 = Fp6 {
+        c0: Fp2::new(
+            [
+            0xd7a673cc3a3c1a1350043f99537d62,
+            0xaf4ee2cf267337bc96363ef4a1c5d5,
+            0xa78b89349dcd1c03695a74e72d3657,
+            0x15cea6
+        ],
+            [
+            0x838bc141e041c259849326fbd0839f,
+            0xe939719709c1b3f82d2a25cc7156a3,
+            0xf60f3d4352c4d388c0f198854908c0,
+            0x1701
+        ]
+        ),
+        c1: Fp2::new(
+            [
+            0x45cadfb890454a2101a112f7471f0e,
+            0x6051e6b6c4d3feb6dc8dac2acadd3,
+            0x4e0d608e6e6c8ac5ddcf8d6d2a950d,
+            0x171a6e
+        ],
+            [
+            0x6608ab30ebc7dfe56eaf0dd9ab8439,
+            0x41beeccc5170b8696a439bb666ad8a,
+            0x88c25be6fd3611cc21c9968e4f87e5,
+            0x3c68b
+        ]
+        ),
+        c2: Fp2::new(
+            [
+            0xc445c76a5d8f52f653bbaee04ba5ce,
+            0xae32526d3635a5343eb02640358d9a,
+            0x88caa8a671f90b55488e272f48c7c5,
+            0x1728d6
+        ],
+            [
+            0x4822e20cb69b8b05003ee74e09cb48,
+            0x72cbde51e1322d82b2c8a026a2153f,
+            0x8d381b066b83a883ba8251ce2ea67,
+            0x5bfe7
+        ]
+        )
+    };
+
+    let c1 = Fp6 {
+        c0: Fp2::new(
+            [
+            0x8124ae770682c9b19233bf0bcfa00d,
+            0x263f712ed4ddda59c1d9909148e3f2,
+            0x8dedcc04674e5f5739cf0d845ba801,
+            0x17b4a6
+        ],
+            [
+            0xba19e685b1b398b51f40160e6c8f09,
+            0xbb9ddf06503dc3c497da88b73db584,
+            0x600cb2e24fec168f82542fbf98234d,
+            0x164a54
+        ]
+        ),
+        c1: Fp2::new(
+            [
+            0xbd5e884b8c74d4c1c6ac7c01278ac5,
+            0xddd1ccdf133bfd75e033eae50aec66,
+            0x42fcc0cf10e3001fa5e82d398f6ba1,
+            0xc2145
+        ],
+            [
+            0x302399e6240473af47abe56fc97478,
+            0x6660c352ecbf2eedf30b77b6b501df,
+            0xdf3c1552ada42b7e0521bc2e738943,
+            0xd7fcf
+        ]
+        ),
+        c2: Fp2::new(
+            [
+            0x502717270dfecf2b825ac24608215c,
+            0xf409dd2a5c38b176f0b64d3d0a224c,
+            0xe13260d601c89ee717acfd3d4e1d80,
+            0x130e7c
+        ],
+            [
+            0x8508a21a2bf902f4db2c068913bc1c,
+            0x75a8786a72f8a343123a30a7c5f8d1,
+            0xfe9bfd08bbe23fcdf1d3bc5390c62e,
+            0x14fd52
+        ]
+        )
+    };
+
+    let expected_pairing_g_h = Fp12 { c0, c1 };
+
+    assert(pairing_g_h.eq(expected_pairing_g_h));
     let pairing_expected_id = pairing(expected, G2Affine::generator());
     assert(pairing_g_h.eq(pairing_expected_id)); // passess!
 }
