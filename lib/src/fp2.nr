@@ -2,51 +2,150 @@ use bignum::BigNum;
 use bignum::fields::bls12_381Fq::BLS12_381_Fq_Params;
 
 // Parameter reference https://github.com/noir-lang/noir_bigcurve/blob/main/src/curves/bls12_381.nr#L60
-pub type BLS12_381Fq = BigNum<4, BLS12_381_Fq_Params>;
+pub type Fp = BigNum<4, 381, BLS12_381_Fq_Params>;
 
 // Code reference https://github.com/zkcrypto/bls12_381/blob/main/src/fp2.rs
 
 // c0 + c1*u
 // F_p / u^2 + 1
 pub struct Fp2 {
-    c0: BLS12_381Fq,
-    c1: BLS12_381Fq,
+    pub(crate) c0: Fp,
+    pub(crate) c1: Fp,
 }
 
 impl Fp2 {
-    fn new(c0: [Field; 4], c1: [Field; 4]) -> Self {
+    pub fn new(c0: [Field; 4], c1: [Field; 4]) -> Self {
         Fp2 { c0: BigNum { limbs: c0 }, c1: BigNum { limbs: c1 } }
     }
 
-    fn zero() -> Fp2 {
+    pub fn zero() -> Fp2 {
         Fp2 { c0: BigNum::new(), c1: BigNum::new() }
     }
 
-    fn one() -> Fp2 {
+    pub fn one() -> Fp2 {
         Fp2 { c0: BigNum::one(), c1: BigNum::new() }
     }
 
-    fn add(self: Self, other: Self) -> Self {
-        Self { c0: self.c0.add(other.c0), c1: self.c1.add(other.c1) }
-    }
-
-    fn sub(self: Self, other: Self) -> Self {
-        Self { c0: self.c0.sub(other.c0), c1: self.c1.sub(other.c1) }
-    }
-
-    fn neg(self: Self) -> Self {
+    pub fn neg(self: Self) -> Self {
         Self { c0: self.c0.neg(), c1: self.c1.neg() }
     }
 
-    fn eq(self: Self, other: Self) -> bool {
-        self.c0.eq(other.c0) & self.c1.eq(other.c1)
+    pub fn is_zero(self: Self) -> bool {
+        (self.c0 == BigNum::new()) & (self.c1 == BigNum::new())
     }
 
-    fn is_zero(self: Self) -> bool {
-        self.c0.eq(BigNum::new()) & self.c1.eq(BigNum::new())
+    pub fn square(self: Self) -> Self {
+        unsafe {
+            // a = c0 + c1
+            // b = c0 - c1
+            // c = c0 + c0
+            let a = self.c0.__add(self.c1);
+            let b = self.c0.__sub(self.c1);
+            let c = self.c0.__add(self.c0);
+
+            // res_c0 = (c0 + c1) * (c0 - c1)
+            let res_c0 = a.__mul(b);
+            // res_c1 = (c0 + c0) * c1
+            let res_c1 = c.__mul(self.c1);
+
+            // Constrain res_c0
+            let lhs_terms = [[self.c0, self.c1]];
+            let lhs_flags = [[false, false]];
+            let rhs_terms = [[self.c0, self.c1]];
+            let rhs_flags = [[false, true]];
+            let res = [res_c0];
+            let res_flag = [true];
+            BigNum::evaluate_quadratic_expression(lhs_terms, lhs_flags, rhs_terms, rhs_flags, res, res_flag);
+
+            // Constrain res_c1
+            let lhs_terms1 = [[self.c0, self.c0]];
+            let lhs_flags1 = [[false, false]];
+            let rhs_terms1 = [[self.c1, BigNum::new()]];
+            let rhs_flags1 = [[false, false]];
+            let res1 = [res_c1];
+            let res_flag1 = [true];
+            BigNum::evaluate_quadratic_expression(lhs_terms1, lhs_flags1, rhs_terms1, rhs_flags1, res1, res_flag1);
+
+            Self { c0: res_c0, c1: res_c1 }
+        }
     }
 
+    // Returns inverse and errors if there is no inverse
+    pub fn invert(self: Self) -> Self {
+        unsafe {
+            // (self.c0 * self.c0 + self.c1 * self.c1).invert()
+            let c0_square = self.c0.__mul(self.c0);
+            let c1_square = self.c1.__mul(self.c1);
+            let temp = (c0_square.__add(c1_square));
+
+            // Constrain temp = self.c0 * self.c0 + self.c1 * self.c1
+            let lhs_terms = [[self.c0], [self.c1]];
+            let lhs_flags = [[false], [false]];
+            let rhs_terms = [[self.c0], [self.c1]];
+            let rhs_flags = [[false], [false]];
+            let res = [temp];
+            let res_flag = [true];
+            BigNum::evaluate_quadratic_expression(lhs_terms, lhs_flags, rhs_terms, rhs_flags, res, res_flag);
+
+            // __invmod asserts that multiplicative inverse exists according to parameters
+            // in this case that should pass
+            let inv = temp.__invmod();
+            // Constrain inverse
+            // TODO can this be done more efficiently?
+            let check_identity = inv * temp;
+            assert(check_identity == BigNum::one());
+
+            // Computing c0, c1 constrained.
+            // TODO how can this be improved?
+            // c0 = self.c0 * inv
+            // c1 = self.c1 * (-inv)
+            let res_c0 = self.c0 * inv;
+            let res_c1 = self.c1 * inv.neg();
+
+            Self { c0: res_c0, c1: res_c1 }
+        }
+    }
+
+    // (u+1) is a quadratric residue in Fp2
+    // returns self * (u+1)
+    pub fn mul_by_nonresidue(self: Self) -> Self {
+        // Multiply c0 + c1*u by u + 1:
+        // (c0 + c1*u)(u + 1)
+        // = c0 * u + c0 + c1 * u^2 + c1 * u
+        // and because u^2 = -1, we get
+        // = c0 * u + c0 - c1 + c1 * u
+        // (c0 - c1) + (c0 + c1)u
+        Self { c0: self.c0 - self.c1, c1: self.c0 + self.c1 }
+    }
+
+    pub fn conjugate(self: Self) -> Self {
+        Fp2 { c0: self.c0, c1: self.c1.neg() }
+    }
+
+    // returns self^p
+    pub fn frobenius_map(self: Self) -> Self {
+        // (c0 + c1*u)^p = c0^p + (c1*u)^p
+        // and c0^p=c0, c1^p=c1, and u^p = -u, so the result is:
+        // c0 - c1
+        self.conjugate()
+    }
+}
+
+impl std::ops::Add for Fp2 {
+    fn add(self: Self, other: Self) -> Self {
+        Self { c0: self.c0 + other.c0, c1: self.c1 + other.c1 }
+    }
+}
+
+impl std::ops::Sub for Fp2 {
+    fn sub(self: Self, other: Self) -> Self {
+        Self { c0: self.c0 - other.c0, c1: self.c1 - other.c1 }
+    }
+}
+
+impl std::ops::Mul for Fp2 {
     fn mul(self: Self, other: Self) -> Self {
+        // TODO: don't wrap the whole thing in unsafe.
         unsafe {
             // Calculate unconstrained
             // self.c0 * other.c0
@@ -94,103 +193,14 @@ impl Fp2 {
             Self { c0, c1 }
         }
     }
+}
 
-    fn square(self: Self) -> Self {
-        unsafe {
-            // a = c0 + c1
-            // b = c0 - c1
-            // c = c0 + c0
-            let a = self.c0.__add(self.c1);
-            let b = self.c0.__sub(self.c1);
-            let c = self.c0.__add(self.c0);
-
-            // res_c0 = (c0 + c1) * (c0 - c1)
-            let res_c0 = a.__mul(b);
-            // res_c1 = (c0 + c0) * c1
-            let res_c1 = c.__mul(self.c1);
-
-            // Constrain res_c0
-            let lhs_terms = [[self.c0, self.c1]];
-            let lhs_flags = [[false, false]];
-            let rhs_terms = [[self.c0, self.c1]];
-            let rhs_flags = [[false, true]];
-            let res = [res_c0];
-            let res_flag = [true];
-            BigNum::evaluate_quadratic_expression(lhs_terms, lhs_flags, rhs_terms, rhs_flags, res, res_flag);
-
-            // Constrain res_c1
-            let lhs_terms1 = [[self.c0, self.c0]];
-            let lhs_flags1 = [[false, false]];
-            let rhs_terms1 = [[self.c1, BigNum::new()]];
-            let rhs_flags1 = [[false, false]];
-            let res1 = [res_c1];
-            let res_flag1 = [true];
-            BigNum::evaluate_quadratic_expression(lhs_terms1, lhs_flags1, rhs_terms1, rhs_flags1, res1, res_flag1);
-
-            Self { c0: res_c0, c1: res_c1 }
-        }
-    }
-
-    // Returns inverse and errors if there is no inverse
-    fn invert(self: Self) -> Self {
-        unsafe {
-            // (self.c0 * self.c0 + self.c1 * self.c1).invert()
-            let c0_square = self.c0.__mul(self.c0);
-            let c1_square = self.c1.__mul(self.c1);
-            let temp = (c0_square.__add(c1_square));
-
-            // Constrain temp = self.c0 * self.c0 + self.c1 * self.c1
-            let lhs_terms = [[self.c0], [self.c1]];
-            let lhs_flags = [[false], [false]];
-            let rhs_terms = [[self.c0], [self.c1]];
-            let rhs_flags = [[false], [false]];
-            let res = [temp];
-            let res_flag = [true];
-            BigNum::evaluate_quadratic_expression(lhs_terms, lhs_flags, rhs_terms, rhs_flags, res, res_flag);
-
-            // __invmod asserts that multiplicative inverse exists according to parameters
-            // in this case that should pass
-            let inv = temp.__invmod();
-            // Constrain inverse
-            // TODO can this be done more efficiently?
-            let check_identity = inv.mul(temp);
-            assert(check_identity.eq(BigNum::one()));
-
-            // Computing c0, c1 constrained.
-            // TODO how can this be improved?
-            // c0 = self.c0 * inv
-            // c1 = self.c1 * (-inv)
-            let res_c0 = self.c0.mul(inv);
-            let res_c1 = self.c1.mul(inv.neg());
-
-            Self { c0: res_c0, c1: res_c1 }
-        }
-    }
-
-    // (u+1) is a quadratric residue in Fp2
-    // returns self * (u+1)
-    fn mul_by_nonresidue(self: Self) -> Self {
-        // Multiply c0 + c1*u by u + 1:
-        // (c0 + c1*u)(u + 1)
-        // = c0 * u + c0 + c1 * u^2 + c1 * u
-        // and because u^2 = -1, we get
-        // = c0 * u + c0 - c1 + c1 * u
-        // (c0 - c1) + (c0 + c1)u
-        Self { c0: self.c0.sub(self.c1), c1: self.c0.add(self.c1) }
-    }
-
-    fn conjugate(self: Self) -> Self {
-        Fp2 { c0: self.c0, c1: self.c1.neg() }
-    }
-
-    // returns self^p
-    fn frobenius_map(self: Self) -> Self {
-        // (c0 + c1*u)^p = c0^p + (c1*u)^p
-        // and c0^p=c0, c1^p=c1, and u^p = -u, so the result is:
-        // c0 - c1
-        self.conjugate()
+impl std::cmp::Eq for Fp2 {
+    fn eq(self: Self, other: Self) -> bool {
+        (self.c0 == other.c0) & (self.c1 == other.c1)
     }
 }
+
 
 #[test]
 fn test_mul_1() {
@@ -208,13 +218,13 @@ fn test_mul_1() {
     // test multiplication by 1
     let mult_by_1 = test_val.mul(Fp2::one());
 
-    assert(mult_by_1.c0.eq(test_val.c0));
-    assert(mult_by_1.c1.eq(test_val.c1));
+    assert(mult_by_1.c0 == test_val.c0);
+    assert(mult_by_1.c1 == test_val.c1);
 
     // test multiplication by 0
     let mult_by_0 = test_val.mul(zero);
-    assert(mult_by_0.c0.eq(BigNum::new()));
-    assert(mult_by_0.c1.eq(BigNum::new()));
+    assert(mult_by_0.c0 == BigNum::new());
+    assert(mult_by_0.c1 == BigNum::new());
 }
 
 #[test]
@@ -262,8 +272,8 @@ fn test_addition() {
     ]
     );
     let res = a.add(b);
-    assert(res.c0.eq(c.c0));
-    assert(res.c1.eq(c.c1));
+    assert(res.c0 == c.c0);
+    assert(res.c1 == c.c1);
 }
 
 #[test]
@@ -311,8 +321,8 @@ fn test_subtraction() {
     ]
     );
     let res = a.sub(b);
-    assert(res.c0.eq(c.c0));
-    assert(res.c1.eq(c.c1));
+    assert(res.c0 == c.c0);
+    assert(res.c1 == c.c1);
 }
 
 #[test]
@@ -363,8 +373,8 @@ fn test_multiplication() {
     );
 
     let res = a.mul(b);
-    assert(res.c0.eq(c.c0));
-    assert(res.c1.eq(c.c1));
+    assert(res.c0 == c.c0);
+    assert(res.c1 == c.c1);
 }
 
 #[test]
@@ -399,8 +409,8 @@ fn test_square() {
     ]
     );
     let res = a.square();
-    assert(res.c0.eq(c.c0));
-    assert(res.c1.eq(c.c1));
+    assert(res.c0 == c.c0);
+    assert(res.c1 == c.c1);
 }
 
 #[test]
@@ -435,8 +445,8 @@ fn test_inversion() {
     );
 
     let res = a.invert();
-    assert(res.c0.eq(c.c0));
-    assert(res.c1.eq(c.c1));
+    assert(res.c0 == c.c0);
+    assert(res.c1 == c.c1);
 
     let identity_check = res.mul(a);
     assert(identity_check.eq(Fp2::one()));

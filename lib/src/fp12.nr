@@ -1,99 +1,62 @@
 use crate::fp6::Fp6;
 use crate::fp2::Fp2;
-use bignum::BigNum;
 
 // c0 + c1*w
 // F_{p^12} = F_{p^6} / w^2 - v
 pub struct Fp12 {
-  c0: Fp6,
-  c1: Fp6
+  pub(crate) c0: Fp6,
+  pub(crate) c1: Fp6
 }
 
 impl Fp12 {
-    fn new(c0: Fp6, c1: Fp6) -> Self {
+    pub fn new(c0: Fp6, c1: Fp6) -> Self {
         Fp12 { c0, c1 }
     }
 
-    fn zero() -> Self {
+    pub fn zero() -> Self {
         Fp12 { c0: Fp6::zero(), c1: Fp6::zero() }
     }
 
-    fn one() -> Self {
+    pub fn one() -> Self {
         Fp12 { c0: Fp6::one(), c1: Fp6::zero() }
     }
 
-    fn eq(self: Self, other: Self) -> bool {
-        self.c0.eq(other.c0) & self.c1.eq(other.c1)
-    }
-
-    fn add(self: Self, other: Self) -> Self {
-        Self { c0: self.c0.add(other.c0), c1: self.c1.add(other.c1) }
-    }
-
-    fn sub(self: Self, other: Self) -> Self {
-        Self { c0: self.c0.sub(other.c0), c1: self.c1.sub(other.c1) }
-    }
-
-    fn neg(self: Self) -> Self {
+    pub fn neg(self: Self) -> Self {
         Self { c0: self.c0.neg(), c1: self.c1.neg() }
     }
 
-    fn conjugate(self: Self) -> Self {
+    pub fn conjugate(self: Self) -> Self {
         Self { c0: self.c0, c1: self.c1.neg() }
     }
 
-    fn square(self: Fp12) -> Fp12 {
+    pub fn square(self: Fp12) -> Fp12 {
         // ab = self.c0 * self.c1
-        let ab = self.c0.mul(self.c1);
+        let ab = self.c0 * self.c1;
 
         // c0_plus_c1 = self.c0 + self.c1
-        let c0_plus_c1 = self.c0.add(self.c1);
+        let c0_plus_c1 = self.c0 + self.c1;
 
         // temp = self.c1 * nonresidue
         let temp = self.c1.mul_by_nonresidue();
 
         // temp_with_c0 = temp + self.c0
         // temp_with_c0 = (self.c1 * nonresidue) + self.c0
-        let temp_with_c0 = temp.add(self.c0);
+        let temp_with_c0 = temp + self.c0;
 
         // step 1: c0 = temp_with_c0 * c0_plus_c1 - ab 
         // c0 = (self.c1 * nonresidue + self.c0) * (self.c0 + self.c1) - ab 
-        let mut c0 = (temp_with_c0.mul(c0_plus_c1)).sub(ab);
+        let mut c0 = (temp_with_c0 * c0_plus_c1) - ab;
         // step 2: c0 = ((self.c1 * nonresidue + self.c0) * (self.c0 + self.c1) - ab) - (ab * nonresidue)
-        c0 = c0.sub(ab.mul_by_nonresidue());
+        c0 = c0 - ab.mul_by_nonresidue();
 
         // c1 = 2 * ab
-        let c1 = ab.add(ab);
+        let c1 = ab + ab;
 
         // Return the final Fp12 structure
         Fp12 { c0, c1 }
     }
 
-    fn mul(self: Fp12, other: Fp12) -> Fp12 {
-        // aa = self.c0 * other.c0
-        let aa = self.c0.mul(other.c0);
-
-        // bb = self.c1 * other.c1
-        let bb = self.c1.mul(other.c1);
-
-        // o = other.c0 + other.c1
-        let o = other.c0.add(other.c1);
-
-        // c1 = (self.c1 + self.c0) * (other.c0 + other.c1) - aa - bb
-        let mut c1 = self.c1.add(self.c0);
-        c1 = c1.mul(o);
-        c1 = c1.sub(aa);
-        c1 = c1.sub(bb);
-
-        // c0 = bb * nonresidue + aa
-        let mut c0 = bb.mul_by_nonresidue();
-        c0 = c0.add(aa);
-
-        // Return the final Fp12 structure
-        Fp12 { c0, c1 }
-    }
-
-    fn frobenius_map(self: Self) -> Self {
+    pub fn frobenius_map(self: Self) -> Self {
         let c0 = self.c0.frobenius_map();
         let mut c1 = self.c1.frobenius_map();
 
@@ -119,31 +82,72 @@ impl Fp12 {
             c2: Fp2::zero()
         };
 
-        c1 = c1.mul(constant);
+        c1 = c1 * constant;
 
         Fp12 { c0, c1 }
     }
 
     // Returns inverse and errors if there is no inverse
-    fn invert(self: Self) -> Self {
+    pub fn invert(self: Self) -> Self {
         let mut t = (self.c0.square()).sub((self.c1.square().mul_by_nonresidue()));
         // This will error if there's no inverse
         t = t.invert();
-        Fp12 { c0: self.c0.mul(t), c1: self.c1.mul(t.neg()) }
+        Fp12 { c0: self.c0 * t, c1: self.c1 * t.neg() }
     }
 
-    fn mul_by_014(self: Self, c0: Fp2, c1: Fp2, c4: Fp2) -> Fp12 {
+    pub(crate) fn mul_by_014(self: Self, c0: Fp2, c1: Fp2, c4: Fp2) -> Fp12 {
         let aa = self.c0.mul_by_01(c0, c1);
         let bb = self.c1.mul_by_1(c4);
-        let o = c1.add(c4);
-        let mut c1 = self.c1.add(self.c0);
+        let o = c1 + c4;
+        let mut c1 = self.c1 + self.c0;
         c1 = c1.mul_by_01(c0, o);
         c1 = c1.sub(aa).sub(bb);
         let mut c0 = bb;
         c0 = c0.mul_by_nonresidue();
-        c0 = c0.add(aa);
+        c0 = c0 + aa;
 
         Fp12 { c0, c1 }
+    }
+}
+
+impl std::ops::Add for Fp12 {
+    fn add(self, other: Self) -> Self {
+        Self { c0: self.c0 + other.c0, c1: self.c1 + other.c1 }
+    }
+}
+
+impl std::ops::Sub for Fp12 {
+    fn sub(self: Self, other: Self) -> Self {
+        Self { c0: self.c0.sub(other.c0), c1: self.c1.sub(other.c1) }
+    }
+}
+
+impl std::ops::Mul for Fp12 {
+    fn mul(self, other: Self) -> Self {
+        let aa = self.c0 * other.c0;
+
+        let bb = self.c1 * other.c1;
+
+        let o = other.c0 + other.c1;
+
+        // c1 = (self.c1 + self.c0) * (other.c0 + other.c1) - aa - bb
+        let mut c1 = self.c1 + self.c0;
+        c1 = c1 * o;
+        c1 = c1 - aa;
+        c1 = c1 - bb;
+
+        // c0 = bb * nonresidue + aa
+        let mut c0 = bb.mul_by_nonresidue();
+        c0 = c0 + aa;
+
+        // Return the final Fp12 structure
+        Self { c0, c1 }
+    }
+}
+
+impl std::cmp::Eq for Fp12 {
+    fn eq(self, other: Self) -> bool {
+        (self.c0 == other.c0) & (self.c1 == other.c1)
     }
 }
 

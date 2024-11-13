@@ -6,62 +6,50 @@ use bignum::BigNum;
 // c0 + c1*v + c2*v^2
 // F_{p^6} =  F_{p^2} / v^3 - u - 1
 pub struct Fp6 {
-    c0: Fp2,
-    c1: Fp2,
-    c2: Fp2
+    pub(crate) c0: Fp2,
+    pub(crate) c1: Fp2,
+    pub(crate) c2: Fp2
 }
 
 // TODO (if possible) make underlying (Fp2) function unconstrained and then constrain for better performance
 
 impl Fp6 {
-    fn new(c0: Fp2, c1: Fp2, c2: Fp2) -> Self {
+    pub fn new(c0: Fp2, c1: Fp2, c2: Fp2) -> Self {
         Fp6 { c0, c1, c2 }
     }
 
-    fn zero() -> Self {
+    pub fn zero() -> Self {
         Fp6 { c0: Fp2::zero(), c1: Fp2::zero(), c2: Fp2::zero() }
     }
 
-    fn one() -> Self {
+    pub fn one() -> Self {
         Fp6 { c0: Fp2::one(), c1: Fp2::zero(), c2: Fp2::zero() }
     }
 
-    fn eq(self: Self, other: Self) -> bool {
-        self.c0.eq(other.c0) & self.c1.eq(other.c1) & self.c2.eq(other.c2)
-    }
-
-    fn add(self: Self, other: Self) -> Self {
-        Self { c0: self.c0.add(other.c0), c1: self.c1.add(other.c1), c2: self.c2.add(other.c2) }
-    }
-
-    fn sub(self: Self, other: Self) -> Self {
-        Self { c0: self.c0.sub(other.c0), c1: self.c1.sub(other.c1), c2: self.c2.sub(other.c2) }
-    }
-
-    fn neg(self: Self) -> Self {
+    pub fn neg(self: Self) -> Self {
         Self { c0: self.c0.neg(), c1: self.c1.neg(), c2: self.c2.neg() }
     }
 
     pub fn mul_by_1(self: Self, c1: Fp2) -> Fp6 {
-        Fp6 { c0: (self.c2.mul(c1)).mul_by_nonresidue(), c1: self.c0.mul(c1), c2: self.c1.mul(c1) }
+        Fp6 { c0: (self.c2 * c1).mul_by_nonresidue(), c1: self.c0 * c1, c2: self.c1 * c1 }
     }
 
     pub fn mul_by_01(self: Self, c0: Fp2, c1: Fp2) -> Fp6 {
-        let a_a = self.c0.mul(c0);
-        let b_b = self.c1.mul(c1);
+        let a_a = self.c0 * c0;
+        let b_b = self.c1 * c1;
 
-        let t1 = ((self.c2.mul(c1)).mul_by_nonresidue()).add(a_a);
+        let t1 = ((self.c2 * c1).mul_by_nonresidue()) + a_a;
 
-        let t2 = (c0.add(c1)).mul((self.c0.add(self.c1))).sub(a_a).sub(b_b);
+        let t2 = (c0 + c1) * (self.c0 + self.c1) - a_a - b_b;
 
-        let t3 = self.c2.mul(c0).add(b_b);
+        let t3 = self.c2 * c0 + b_b;
 
         Fp6 { c0: t1, c1: t2, c2: t3 }
     }
 
     // v is a quadratic residue in Fp6
     // returns self * v
-    fn mul_by_nonresidue(self: Self) -> Self {
+    pub fn mul_by_nonresidue(self: Self) -> Self {
         // Multiply c0 + c1 * v + c2 * v^2 by v
         // (c0 + c1 * v + c2 * v^2) * v
         // = c0 * v + c1 * v^2 + c2 * v^3
@@ -80,7 +68,7 @@ impl Fp6 {
         }
     }
 
-    fn frobenius_map(self: Self) -> Self {
+    pub fn frobenius_map(self: Self) -> Self {
         let c0 = self.c0.frobenius_map();
         let mut c1 = self.c1.frobenius_map();
         let mut c2 = self.c2.frobenius_map();
@@ -108,8 +96,8 @@ impl Fp6 {
             [0, 0, 0, 0]
         );
 
-        c1 = c1.mul(constant1);
-        c2 = c2.mul(constant2);
+        c1 = c1 * constant1;
+        c2 = c2 * constant2;
 
         Fp6 { c0, c1, c2 }
     }
@@ -344,62 +332,82 @@ impl Fp6 {
         }
     }
 
-    fn mul(self: Self, other: Self) -> Self {
-        self.mul_interleaved(other)
-    }
-
     pub fn square(self: Self) -> Self {
         // s0 = self.c0^2
         let s0 = self.c0.square();
 
         // ab = self.c0 * self.c1
         // s1 = 2 * ab
-        let ab = self.c0.mul(self.c1);
-        let s1 = ab.add(ab);
+        let ab = self.c0 * self.c1;
+        let s1 = ab + ab;
 
         // s2 = (self.c0 - self.c1 + self.c2)^2
-        let s2 = (self.c0.sub(self.c1).add(self.c2)).square();
+        let s2 = (self.c0 - self.c1 + self.c2).square();
 
         // bc = self.c1 * self.c2
         // s3 = 2 * bc
-        let bc = self.c1.mul(self.c2);
-        let s3 = bc.add(bc);
+        let bc = self.c1 * self.c2;
+        let s3 = bc + bc;
 
         // s4 = self.c2^2
         let s4 = self.c2.square();
 
         Fp6 {
             // c0 = s3 * (nonresidue) + s0
-            c0: s3.mul_by_nonresidue().add(s0),
+            c0: s3.mul_by_nonresidue() + s0,
             // c1 = s4 * (nonresidue) + s1
-            c1: s4.mul_by_nonresidue().add(s1),
+            c1: s4.mul_by_nonresidue() + s1,
             // c2 = s1 + s2 + s3 - s0 - s4
-            c2: s1.add(s2).add(s3).sub(s0).sub(s4)
+            c2: s1 + s2 + s3 - s0 - s4,
         }
     }
 
     // Returns inverse and errors if there is no inverse
-    fn invert(self: Self) -> Self {
+    pub fn invert(self: Self) -> Self {
         unsafe {
             let mut c0 = self.c1.mul(self.c2).mul_by_nonresidue();
-            c0 = self.c0.square().sub(c0);
+            c0 = self.c0.square() - c0;
 
             let mut c1 = self.c2.square().mul_by_nonresidue();
-            c1 = c1.sub(self.c0.mul(self.c1));
+            c1 = c1 - (self.c0 * self.c1);
 
             let mut c2 = self.c1.square();
-            c2 = c2.sub(self.c0.mul(self.c2));
+            c2 = c2 - (self.c0 * self.c2);
 
             let tmp = self.c1.mul(c2).add(self.c2.mul(c1)).mul_by_nonresidue().add(self.c0.mul(c0));
             // This will error if there is no inverse
             let inv_tmp = tmp.invert();
 
-            let res_c0 = c0.mul(inv_tmp);
-            let res_c1 = c1.mul(inv_tmp);
-            let res_c2 = c2.mul(inv_tmp);
+            let res_c0 = c0 * inv_tmp;
+            let res_c1 = c1 * inv_tmp;
+            let res_c2 = c2 * inv_tmp;
 
             Self { c0: res_c0, c1: res_c1, c2: res_c2 }
         }
+    }
+}
+
+impl std::ops::Add for Fp6 {
+    fn add(self: Self, other: Self) -> Self {
+        Self { c0: self.c0 + other.c0, c1: self.c1 + other.c1, c2: self.c2 + other.c2 }
+    }
+}
+
+impl std::ops::Sub for Fp6 {
+    fn sub(self: Self, other: Self) -> Self {
+        Self { c0: self.c0 - other.c0, c1: self.c1 - other.c1, c2: self.c2 - other.c2 }
+    }
+}
+
+impl std::ops::Mul for Fp6 {
+    fn mul(self: Self, other: Self) -> Self {
+        self.mul_interleaved(other)
+    }
+}
+
+impl std::cmp::Eq for Fp6 {
+    fn eq(self: Self, other: Self) -> bool {
+        (self.c0 == other.c0) & (self.c1 == other.c1) & (self.c2 == other.c2)
     }
 }
 
