@@ -1,3 +1,4 @@
+use crate::BNfp2::Fp;
 use crate::BNfp2::Fp2;
 use bignum::BigNum;
 
@@ -379,6 +380,110 @@ impl std::cmp::Eq for Fp6 {
     fn eq(self: Self, other: Self) -> bool {
         (self.c0 == other.c0) & (self.c1 == other.c1) & (self.c2 == other.c2)
     }
+}
+
+use std::hash::keccak256;
+
+comptime global SEED_0: [u8; 32] = [
+    0x4a, 0x2b, 0x57, 0xf1, 0xd0, 0xd9, 0xe4, 0xbe,
+    0x39, 0x8a, 0xa9, 0x50, 0x9d, 0x25, 0x36, 0xbe,
+    0x60, 0x77, 0xbf, 0x21, 0x82, 0x2e, 0x6d, 0x40,
+    0x5d, 0x65, 0xac, 0x2d, 0x0f, 0x0b, 0x3e, 0x75,
+];
+
+comptime global SEED_1 = keccak256(SEED_0, 32);
+comptime global SEED_2 = keccak256(SEED_1, 32);
+comptime global SEED_3 = keccak256(SEED_2, 32);
+comptime global SEED_4 = keccak256(SEED_3, 32);
+comptime global SEED_5 = keccak256(SEED_4, 32);
+
+#[test]
+fn test_add_identity() {
+    let zero = Fp6::zero();
+
+    let a = Fp6::new(
+        Fp2 { c0: Fp::derive_from_seed(SEED_0), c1: Fp::derive_from_seed(SEED_1) },
+        Fp2 { c0: Fp::derive_from_seed(SEED_2), c1: Fp::derive_from_seed(SEED_3) },
+        Fp2 { c0: Fp::derive_from_seed(SEED_4), c1: Fp::derive_from_seed(SEED_5) },
+    );
+
+    assert(a + zero == a);
+}
+
+#[test]
+fn test_add_negative() {
+    let a = Fp6::new(
+        Fp2 { c0: Fp::derive_from_seed(SEED_0), c1: Fp::derive_from_seed(SEED_1) },
+        Fp2 { c0: Fp::derive_from_seed(SEED_2), c1: Fp::derive_from_seed(SEED_3) },
+        Fp2 { c0: Fp::derive_from_seed(SEED_4), c1: Fp::derive_from_seed(SEED_5) },
+    );
+
+    let negative_a = a.neg();
+
+    assert(negative_a + a == Fp6::zero());
+}
+
+#[test]
+fn test_mul_identity() {
+    let one = Fp6::one();
+
+    let a = Fp6::new(
+        Fp2 { c0: Fp::derive_from_seed(SEED_0), c1: Fp::derive_from_seed(SEED_1) },
+        Fp2 { c0: Fp::derive_from_seed(SEED_2), c1: Fp::derive_from_seed(SEED_3) },
+        Fp2 { c0: Fp::derive_from_seed(SEED_4), c1: Fp::derive_from_seed(SEED_5) },
+    );
+
+    assert(a * one == a);
+}
+
+#[test]
+fn test_mul_zero() {
+    let zero = Fp6::zero();
+
+    let a = Fp6::new(
+        Fp2 { c0: Fp::derive_from_seed(SEED_0), c1: Fp::derive_from_seed(SEED_1) },
+        Fp2 { c0: Fp::derive_from_seed(SEED_2), c1: Fp::derive_from_seed(SEED_3) },
+        Fp2 { c0: Fp::derive_from_seed(SEED_4), c1: Fp::derive_from_seed(SEED_5) },
+    );
+
+    assert(a * zero == zero);
+}
+
+#[test]
+fn test_eq() {
+    let a = Fp6::new(
+        Fp2 { c0: Fp::derive_from_seed(SEED_0), c1: Fp::derive_from_seed(SEED_1) },
+        Fp2 { c0: Fp::derive_from_seed(SEED_2), c1: Fp::derive_from_seed(SEED_3) },
+        Fp2 { c0: Fp::derive_from_seed(SEED_4), c1: Fp::derive_from_seed(SEED_5) },
+    );
+
+    let b = Fp6::new(
+        Fp2 { c0: Fp::derive_from_seed(SEED_0), c1: Fp::derive_from_seed(SEED_1) },
+        Fp2 { c0: Fp::derive_from_seed(SEED_2), c1: Fp::derive_from_seed(SEED_3) },
+        Fp2 { c0: Fp::derive_from_seed(SEED_4), c1: Fp::derive_from_seed(SEED_5) },
+    );
+
+    assert(a == b);
+}
+
+#[test]
+fn test_neg() {
+    let a = Fp6::new(
+        Fp2 { c0: Fp::derive_from_seed(SEED_0), c1: Fp::derive_from_seed(SEED_1) },
+        Fp2 { c0: Fp::derive_from_seed(SEED_2), c1: Fp::derive_from_seed(SEED_3) },
+        Fp2 { c0: Fp::derive_from_seed(SEED_4), c1: Fp::derive_from_seed(SEED_5) },
+    );
+
+    let b = Fp6::new(
+        Fp2 { c0: Fp::derive_from_seed(SEED_0), c1: Fp::derive_from_seed(SEED_1) },
+        Fp2 { c0: Fp::derive_from_seed(SEED_2), c1: Fp::derive_from_seed(SEED_3) },
+        Fp2 { c0: Fp::derive_from_seed(SEED_4), c1: Fp::derive_from_seed(SEED_5) },
+    );
+
+    let negative_a = a.neg();
+
+    assert(negative_a + a == Fp6::zero());
+    assert(b - a == b + negative_a);
 }
 
 // #[test]
