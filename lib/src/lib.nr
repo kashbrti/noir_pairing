@@ -1,10 +1,14 @@
 pub mod fp2;
 pub mod fp6;
 pub mod fp12;
+pub mod helpers;
 pub mod g1;
 pub mod g2;
 pub mod pairing;
 mod test;
+pub mod BNfp2;
+pub mod BNfp6;
+pub mod BNfp12;
 
 // export at the top level:
 pub use pairing::pairing;

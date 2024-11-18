@@ -1,8 +1,9 @@
 use crate::fp2::Fp2;
 use crate::fp6::Fp6;
 use crate::fp12::Fp12;
-use crate::g1::{G1Affine};
+use crate::g1::G1Affine;
 use crate::g2::{G2Affine, G2Projective};
+use crate::helpers::{__final_exponentiation, __compute_c_u, res_reciprocity};
 
 // Ref: https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs
 
@@ -80,21 +81,18 @@ pub(crate) fn ell(f: Fp12, coeffs: (Fp2, Fp2, Fp2), p: G1Affine) -> Fp12 {
     let c1c0 = coeffs.1.c0 * p.x;
     let c1c1 = coeffs.1.c1 * p.x;
 
-    f.mul_by_014(
-        coeffs.2,
-        Fp2 { c0: c1c0, c1: c1c1 },
-        Fp2 { c0: c0c0, c1: c0c1 }
-    )
+    f.mul_by_014(coeffs.2, Fp2 { c0: c1c0, c1: c1c1 }, Fp2 { c0: c0c0, c1: c0c1 })
 }
 
 pub fn miller_loop(p: G1Affine, q: G2Affine) -> Fp12 {
     // https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs#L672
     // Got array from zkcrypto impl
     let booleans = [
-        false, true, true, false, true, false, false, true, false, false, false, false, false, false, false, false,
-        true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-        true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false
+        false, true, true, false, true, false, false, true, false, false, false, false, false,
+        false, false, false, true, false, false, false, false, false, false, false, false, false,
+        false, false, false, false, false, false, false, false, false, false, false, false, false,
+        false, false, false, false, false, false, false, false, false, true, false, false, false,
+        false, false, false, false, false, false, false, false, false, false, false, false,
     ];
 
     let mut adder_cur = G2Projective::from_affine(q);
@@ -116,7 +114,8 @@ pub fn miller_loop(p: G1Affine, q: G2Affine) -> Fp12 {
 
             if i_bool {
                 // addition_step receives f & does 2 things: addition_step & ell function
-                let (coeffs_c0, coeffs_c1, coeffs_c2, cur_updated) = addition_step(adder_cur, adder_base);
+                let (coeffs_c0, coeffs_c1, coeffs_c2, cur_updated) =
+                    addition_step(adder_cur, adder_base);
                 adder_cur = cur_updated;
                 // ell updates f
                 f = ell(f, (coeffs_c0, coeffs_c1, coeffs_c2), adder_p);
@@ -131,117 +130,14 @@ pub fn miller_loop(p: G1Affine, q: G2Affine) -> Fp12 {
     f = ell(f, (coeffs_c0, coeffs_c1, coeffs_c2), adder_p);
 
     f = f.conjugate();
+    println(f);
     f
-}
-
-// https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs#L50
-fn fp4_square(a: Fp2, b: Fp2) -> (Fp2, Fp2) {
-    let t0 = a.square();
-    let t1 = b.square();
-    let mut t2 = t1.mul_by_nonresidue();
-    let c0 = t2.add(t0);
-    t2 = a.add(b);
-    t2 = t2.square();
-    t2 = t2.sub(t0);
-    let c1 = t2.sub(t1);
-
-    (c0, c1)
-}
-
-// https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs#L66
-fn cyclotomic_square(f: Fp12) -> Fp12 {
-    let mut z0 = f.c0.c0;
-    let mut z4 = f.c0.c1;
-    let mut z3 = f.c0.c2;
-    let mut z2 = f.c1.c0;
-    let mut z1 = f.c1.c1;
-    let mut z5 = f.c1.c2;
-
-    let (t0, t1) = fp4_square(z0, z1);
-
-    z0 = t0.sub(z0);
-    z0 = z0.add(z0).add(t0);
-    z1 = t1.add(z1);
-    z1 = z1.add(z1).add(t1);
-
-    let (mut t0, t1) = fp4_square(z2, z3);
-    let (t2, t3) = fp4_square(z4, z5);
-
-    z4 = t0.sub(z4);
-    z4 = z4.add(z4).add(t0);
-
-    z5 = t1.add(z5);
-    z5 = z5.add(z5).add(t1);
-
-    t0 = t3.mul_by_nonresidue();
-    z2 = t0.add(z2);
-    z2 = z2.add(z2).add(t0);
-
-    z3 = t2.sub(z3);
-    z3 = z3.add(z3).add(t2);
-
-    Fp12 { c0: Fp6 { c0: z0, c1: z4, c2: z3 }, c1: Fp6 { c0: z2, c1: z1, c2: z5 } }
-}
-
-fn cycolotomic_exp(f: Fp12) -> Fp12 {
-    // https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs#L119
-    // Got array from zkcrypto impl
-    let booleans = [
-        true, true, false, true, false, false, true, false, false, false, false, false, false, false, false, true,
-        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
-        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true,
-        false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false
-    ];
-
-    let mut tmp = Fp12::one();
-    let mut found_one = false;
-    for i in 0..64 {
-        if found_one {
-            tmp = cyclotomic_square(tmp);
-        } else {
-            found_one = booleans[i];
-        }
-
-        if booleans[i] {
-            tmp = tmp.mul(f);
-        }
-    }
-
-    tmp.conjugate()
 }
 
 impl Fp12 {
     pub(crate) fn final_exponentiation(self: Self) -> Self {
-        let mut f = self;
-        let mut t0 = f.frobenius_map().frobenius_map().frobenius_map().frobenius_map().frobenius_map().frobenius_map();
-        // This will error if inverse doesn't exist
-        let mut t1 = f.invert();
-        let mut t2 = t0.mul(t1);
-        t1 = t2;
-        t2 = t2.frobenius_map().frobenius_map();
-        t2 = t2.mul(t1);
-        t1 = cyclotomic_square(t2).conjugate();
-        let mut t3 = cycolotomic_exp(t2);
-        let mut t4 = cyclotomic_square(t3);
-        let mut t5 = t1.mul(t3);
-        t1 = cycolotomic_exp(t5);
-        t0 = cycolotomic_exp(t1);
-        let mut t6 = cycolotomic_exp(t0);
-        t6 = t6.mul(t4);
-        t4 = cycolotomic_exp(t6);
-        t5 = t5.conjugate();
-        t4 = t4.mul(t5).mul(t2);
-        t5 = t2.conjugate();
-        t1 = t1.mul(t2);
-        t1 = t1.frobenius_map().frobenius_map().frobenius_map();
-        t6 = t6.mul(t5);
-        t6 = t6.frobenius_map();
-        t3 = t3.mul(t0);
-        t3 = t3.frobenius_map().frobenius_map();
-        t3 = t3.mul(t1);
-        t3 = t3.mul(t6);
-        f = t3.mul(t4);
-        f
+        let out = unsafe { __final_exponentiation(self) };
+        out
     }
 }
 
@@ -251,7 +147,13 @@ pub fn pairing(p: G1Affine, q: G2Affine) -> Fp12 {
         Fp12::one()
     } else {
         let tmp = miller_loop(p, q);
-        tmp.final_exponentiation()
+        tmp.final_exponentiation();
+        // instead of final_exponentiation, we use the faster residue check
+        //compute the values of c and u
+        // let c = __compute_c(tmp);
+        // let u = __compute_u(tmp);
+        // perform the residue check
+        tmp
     }
 }
 
