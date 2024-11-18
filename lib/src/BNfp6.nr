@@ -2,8 +2,6 @@ use crate::BNfp2::Fp;
 use crate::BNfp2::Fp2;
 use bignum::BigNum;
 
-// https://github.com/zkcrypto/bls12_381/blob/main/src/fp6.rs
-
 // c0 + c1*v + c2*v^2
 // F_{p^6} =  F_{p^2} / v^3 - u - 1
 pub struct Fp6 {
@@ -67,9 +65,6 @@ impl Fp6 {
         }
     }
 
-
-
-    // https://github.com/zkcrypto/bls12_381/blob/main/src/fp6.rs#L200
     // https://eprint.iacr.org/2022/367
     // for inputs `a = (a0, a1, a2)` and `b = (b0, b1, b2)`,
     // return multiplication a*b
