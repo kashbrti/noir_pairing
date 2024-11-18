@@ -85,14 +85,14 @@ impl Fp12 {
         let mut t3 = self.c1.c1.conjugate();
         let mut t4 = self.c0.c2.conjugate();
         let mut t5 = self.c1.c2.conjugate();
-
+        // now we multiply by the precomputed powers of the nonresidue
         t1 = t1.mul_by_non_residue_power_1();
         t2 = t2.mul_by_non_residue_power_2();
         t3 = t3.mul_by_non_residue_power_3();
         t4 = t4.mul_by_non_residue_power_4();
         t5 = t5.mul_by_non_residue_power_5();
 
-        Fp12 { c0: Fp6::new(t0, t1, t2), c1: Fp6::new(t3, t4, t5) }
+        Fp12 { c0: Fp6::new(t0, t2, t4), c1: Fp6::new(t1, t3, t5) }
     }
 
     // Returns inverse and errors if there is no inverse
@@ -592,7 +592,7 @@ fn test_frobenius_map() {
         .frobenius_map()
         .frobenius_map();
 
-    println(res);
-    println(a);
+    // println(res);
+    // println(a);
     assert(res.eq(a));
 }
