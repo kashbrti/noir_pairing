@@ -1,11 +1,11 @@
+use crate::fp12::Fp12;
 use crate::fp2::Fp2;
 use crate::fp6::Fp6;
-use crate::fp12::Fp12;
 use crate::g1::G1Affine;
 use crate::g2::{G2Affine, G2Projective};
 use bignum::BigNum;
-use bignum::runtime_bignum;
 use bignum::fields::bls12_381Fq::BLS12_381_Fq_Params;
+use bignum::runtime_bignum;
 
 // pub type ExponentsType = BigNum<4, 381>;
 // TODO: we need bignum params for the exponents mod p^12-1

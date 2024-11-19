@@ -124,17 +124,17 @@ impl Fp2 {
         }
     }
 
-    // (u+1) is a quadratric residue in Fp2
-    // returns self * (u+1)
+    // (u+9) is a quadratric residue in Fp2
+    // returns self * (u+9)
     pub fn mul_by_nonresidue(self: Self) -> Self {
         // Multiply c0 + c1*u by u + 1:
-        // (c0 + c1*u)(u + 1)
-        // = c0 * u + c0 + c1 * u^2 + c1 * u
-        // and because u^2 = -1, we get
-        // = c0 * u + c0 - c1 + c1 * u
-        // (c0 - c1) + (c0 + c1)u
-        Self { c0: self.c0 - self.c1, c1: self.c0 + self.c1 }
+        let nine = Self::new([9, 0, 0], [0, 0, 0]);
+        let mult_by_nine = self.mul(nine);
+        let mult_by_u = Self { c0: self.c0 - self.c1, c1: self.c0 + self.c1 };
+        mult_by_nine + mult_by_u 
     }
+    
+
     // the constant generated according to the BN tower, ref:https://hackmd.io/@Wimet/ry7z1Xj-2#Frobenius-Operator
     fn mul_by_non_residue_power_1(self: Self) -> Self {
         let y = Fp2::new(

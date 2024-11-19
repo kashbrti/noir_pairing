@@ -3,7 +3,7 @@ use crate::BNfp2::Fp2;
 use bignum::BigNum;
 
 // c0 + c1*v + c2*v^2
-// F_{p^6} =  F_{p^2} / v^3 - u - 1
+// F_{p^6} =  F_{p^2}[v] / (v^3 - (9+u))
 pub struct Fp6 {
     pub(crate) c0: Fp2,
     pub(crate) c1: Fp2,
@@ -300,56 +300,87 @@ impl Fp6 {
 
     pub fn square(self: Self) -> Self {
         // s0 = self.c0^2
-        let s0 = self.c0.square();
+        let a_0 = self.c0;
+        let a_1 = self.c1;
+        let a_2 = self.c2;
 
-        // ab = self.c0 * self.c1
-        // s1 = 2 * ab
-        let ab = self.c0 * self.c1;
-        let s1 = ab + ab;
+        let c_3 = (a_1 * a_2 + a_2 * a_1).mul_by_nonresidue();
+        let c_4 = (a_2 * a_2).mul_by_nonresidue();
 
-        // s2 = (self.c0 - self.c1 + self.c2)^2
-        let s2 = (self.c0 - self.c1 + self.c2).square();
+        let c_0 = a_0 * a_0 + c_3;
+        let c_1 = a_0 * a_1 + a_1 * a_0 + c_4;
+        let c_2 = a_0 * a_2 + a_1 * a_1 + a_2 * a_0 + c_3;
 
-        // bc = self.c1 * self.c2
-        // s3 = 2 * bc
-        let bc = self.c1 * self.c2;
-        let s3 = bc + bc;
-
-        // s4 = self.c2^2
-        let s4 = self.c2.square();
-
-        Fp6 {
-            // c0 = s3 * (nonresidue) + s0
-            c0: s3.mul_by_nonresidue() + s0,
-            // c1 = s4 * (nonresidue) + s1
-            c1: s4.mul_by_nonresidue() + s1,
-            // c2 = s1 + s2 + s3 - s0 - s4
-            c2: s1 + s2 + s3 - s0 - s4,
-        }
+        Self { c0: c_0 , c1: c_1, c2: c_2 }
     }
 
     // Returns inverse and errors if there is no inverse
+    // pub fn invert(self: Self) -> Self {
+    //     unsafe {
+    //         let mut c0 = self.c1.mul(self.c2).mul_by_nonresidue();
+    //         c0 = self.c0.square() - c0;
+
+    //         let mut c1 = self.c2.square().mul_by_nonresidue();
+    //         c1 = c1 - (self.c0 * self.c1);
+
+    //         let mut c2 = self.c1.square();
+    //         c2 = c2 - (self.c0 * self.c2);
+
+    //         let tmp = self.c1.mul(c2).add(self.c2.mul(c1)).mul_by_nonresidue().add(self.c0.mul(c0));
+    //         // This will error if there is no inverse
+    //         let inv_tmp = tmp.invert();
+
+    //         let res_c0 = c0 * inv_tmp;
+    //         let res_c1 = c1 * inv_tmp;
+    //         let res_c2 = c2 * inv_tmp;
+
+    //         Self { c0: res_c0, c1: res_c1, c2: res_c2 }
+    //     }
+    // }
     pub fn invert(self: Self) -> Self {
-        unsafe {
-            let mut c0 = self.c1.mul(self.c2).mul_by_nonresidue();
-            c0 = self.c0.square() - c0;
+        let c0 = self.c2;
+        let c0 = c0.mul_by_nonresidue();
+        let c0 = c0.mul(self.c1);
+        let c0 = c0.neg();
 
-            let mut c1 = self.c2.square().mul_by_nonresidue();
-            c1 = c1 - (self.c0 * self.c1);
+        let c0s = self.c0;
+        let c0s = c0s.square();
+        let c0 = c0.add(c0s);
 
-            let mut c2 = self.c1.square();
-            c2 = c2 - (self.c0 * self.c2);
+        let c1 = self.c2;
+        let c1 = c1.square();
+        let c1 = c1.mul_by_nonresidue();
 
-            let tmp = self.c1.mul(c2).add(self.c2.mul(c1)).mul_by_nonresidue().add(self.c0.mul(c0));
-            // This will error if there is no inverse
-            let inv_tmp = tmp.invert();
+        let c01 = self.c0;
+        let c01 = c01.mul(self.c1);
+        let c1 = c1.sub(c01);
 
-            let res_c0 = c0 * inv_tmp;
-            let res_c1 = c1 * inv_tmp;
-            let res_c2 = c2 * inv_tmp;
+        let c2 = self.c1;
+        let c2 = c2.square();
+        let c02 = self.c0;
+        let c02 = c02.mul(self.c2);
+        let c2 = c2.sub(c02);
 
-            Self { c0: res_c0, c1: res_c1, c2: res_c2 }
-        }
+        let tmp1 = self.c2;
+        let tmp1 = tmp1.mul(c1);
+        let tmp2 = self.c1;
+        let tmp2 = tmp2.mul(c2);
+        let tmp1 = tmp1.add(tmp2);
+        let tmp1 = tmp1.mul_by_nonresidue();
+        let tmp2 = self.c0;
+        let tmp2 = tmp2.mul(c0);
+        let tmp1 = tmp1.add(tmp2);
+
+        let tmp = tmp1.invert();
+        let c0 = tmp.mul(c0);
+        let c1 = tmp.mul(c1);
+        let c2 = tmp.mul(c2);
+
+        Self {
+            c0,
+            c1,
+            c2,
+        }         
     }
 }
 
@@ -366,8 +397,65 @@ impl std::ops::Sub for Fp6 {
 }
 
 impl std::ops::Mul for Fp6 {
+    // TODO: mudify this to use the optimized mul_interleaved
     fn mul(self: Self, other: Self) -> Self {
-        self.mul_interleaved(other)
+        // let a_0 = self.c0;
+        // let a_1 = self.c1;
+        // let a_2 = self.c2;
+
+        // let b_0 = other.c0;
+        // let b_1 = other.c1;
+        // let b_2 = other.c2;
+
+        // let c_3 = (a_1 * b_2 + a_2 * b_1).mul_by_nonresidue();
+        // let c_4 = (a_2 * b_2).mul_by_nonresidue();
+
+        // let c_0 = a_0 * b_0 + c_3;
+        // let c_1 = a_0 * b_1 + a_1 * b_0 + c_4;
+        // let c_2 = a_0 * b_2 + a_1 * b_1 + a_2 * b_0 + c_3;
+
+        // Self { c0: c_0 , c1: c_1 , c2: c_2 }
+        let a_a = self.c0.mul(other.c0);
+        let b_b = self.c1.mul(other.c1);
+        let c_c = self.c2.mul(other.c2);
+
+        // Construct t1
+        let t1 = other.c1;
+        let t1 = t1.add(other.c2);
+
+        let tmp = self.c1.add(self.c2);
+        let t1 = t1.mul(tmp);
+        let t1 = t1.sub(b_b);
+        let t1 = t1.sub(c_c);
+        let t1 = t1.mul_by_nonresidue();
+        let t1 = t1.add(a_a);
+
+        // Construct t3
+        let t3 = other.c0;
+        let t3 = t3.add(other.c2);
+
+        let tmp = self.c0.add(self.c2);
+        let t3 = t3.mul(tmp);
+        let t3 = t3.sub(a_a);
+        let t3 = t3.add(b_b);
+        let t3 = t3.sub(c_c);
+
+        // Construct t2
+        let t2 = other.c0;
+        let t2 = t2.add(other.c1);
+
+        let tmp = self.c0.add(self.c1);
+        let t2 = t2.mul(tmp);
+        let t2 = t2.sub(a_a);
+        let t2 = t2.sub(b_b);
+        let c_c_mul_by_nonres = c_c.mul_by_nonresidue();
+        let t2 = t2.add(c_c_mul_by_nonres);
+
+        Self{
+            c0: t1,
+            c1: t2,
+            c2: t3,
+        }
     }
 }
 
@@ -380,10 +468,8 @@ impl std::cmp::Eq for Fp6 {
 use std::hash::keccak256;
 
 comptime global SEED_0: [u8; 32] = [
-    0x4a, 0x2b, 0x57, 0xf1, 0xd0, 0xd9, 0xe4, 0xbe,
-    0x39, 0x8a, 0xa9, 0x50, 0x9d, 0x25, 0x36, 0xbe,
-    0x60, 0x77, 0xbf, 0x21, 0x82, 0x2e, 0x6d, 0x40,
-    0x5d, 0x65, 0xac, 0x2d, 0x0f, 0x0b, 0x3e, 0x75,
+    0x4a, 0x2b, 0x57, 0xf1, 0xd0, 0xd9, 0xe4, 0xbe, 0x39, 0x8a, 0xa9, 0x50, 0x9d, 0x25, 0x36, 0xbe,
+    0x60, 0x77, 0xbf, 0x21, 0x82, 0x2e, 0x6d, 0x40, 0x5d, 0x65, 0xac, 0x2d, 0x0f, 0x0b, 0x3e, 0x75,
 ];
 
 comptime global SEED_1 = keccak256(SEED_0, 32);
@@ -442,6 +528,64 @@ fn test_mul_zero() {
     );
 
     assert(a * zero == zero);
+}
+
+
+#[test]
+fn test_mul(){
+    let a = Fp6 {
+        c0: Fp2::new(
+            [931249137692630627214820873509654843, 1119504499152759480213966437802783467, 7925],
+            [78224880956612752148826313774031958, 523285821987772787371122955052007648, 2908],
+        ),
+        c1: Fp2::new(
+            [793845687595632651544624584743846452, 555138155527013797385919921790173584, 2863],
+            [976270220297789342770611863375910356, 525686717671887181608161737503769642, 11626],
+        ),
+        c2: Fp2::new(
+            [2168079427738263250055421125939556, 7125878155446629857795150047547610, 6415],
+            [754351089481693566299603492469719447, 408561611223547342634458904129157797, 5276],
+        ),
+    };
+
+
+
+    let b = Fp6 {
+        c0: Fp2::new(
+            [134527430944310490848539948524822617, 577001641945906737631283582405689511, 5943],
+            [896362280330856336124724157739972132, 960351949023057052050672531043881683, 407],
+        ),
+        c1: Fp2::new(
+            [1095894558173700959471975526567219684, 923718710930725851262400078884481583, 9969],
+            [710870442483259846519512798033987590, 889745989713287591571230406675881741, 8109],
+        ),
+        c2: Fp2::new(
+            [515514609201216777409378406126276859, 1236978637783112193857286237603605152, 6100],
+            [107886740842560417356675148209957068, 185701664447212227165499869682310449, 8301],
+        ),
+    };
+
+    let c = Fp6 {
+        c0: Fp2::new(
+            [1317734712693212892194804690899017448, 647765361554311134934244664153643068, 7755],
+            [311369522596760811974722267806422421, 350858060624371369126965328097233357, 3214],
+        ),
+        c1: Fp2::new(
+            [975888071261516717788350257148843651, 91828962880462873204017513982963331, 12325],
+            [105964416842271288752400990648436625, 76318700213898994891881506778395094, 12312],
+        ),
+        c2: Fp2::new(
+            [634527465191034841380366273097782345, 1006904843712298779768945408984660475, 12337],
+            [199943617689822563043890567949759093, 1214153933331747816282009124607480279, 8396], 
+        ),
+    };
+    println("a*b=");
+    println(a * b);
+    println("c=");
+    println(c);
+    assert(a * b == c);
+
+
 }
 
 #[test]
@@ -738,3 +882,52 @@ fn test_neg() {
 //     let rhs1 = (a.mul(d)).add(b.mul(d));
 //     assert(lhs1.eq(rhs1));
 // }
+
+#[test]
+fn test_square() {
+    let a = Fp6::new(
+        Fp2::new(
+            [281382237812545379193668594878174908, 90824900576507601223966148779479394, 1640],
+            [1199704082799405279767970336007399382, 105838412715217748738343588203455976, 3470],
+        ),
+        Fp2::new(
+            [699517922600938094581844456622821606, 766244793208285317105753995770523332, 5391],
+            [1174771148458207518820683564604158404, 890744614640420316156493451275032886, 4653],
+        ),
+        Fp2::new(
+            [489655109890455545367468964680482035, 398027084094548452922359112094161148, 6728],
+            [496665123426422059639752844234206160, 350210767051572081629044293495878811, 1877],
+        ),
+    );
+    println("a^2 is");
+    println(a.square());
+    println("a^2 should be ");
+    println(a * a);
+    let b = a.square(); 
+    assert(b.eq(a * a));
+}
+
+
+#[test]
+fn test_invert() {
+    let a = Fp6::new(
+        Fp2::new(
+            [281382237812545379193668594878174908, 90824900576507601223966148779479394, 1640],
+            [1199704082799405279767970336007399382, 105838412715217748738343588203455976, 3470],
+        ),
+        Fp2::new(
+            [699517922600938094581844456622821606, 766244793208285317105753995770523332, 5391],
+            [1174771148458207518820683564604158404, 890744614640420316156493451275032886, 4653],
+        ),
+        Fp2::new(
+            [489655109890455545367468964680482035, 398027084094548452922359112094161148, 6728],
+            [496665123426422059639752844234206160, 350210767051572081629044293495878811, 1877],
+        ),
+    );
+    let b = a.invert(); 
+    // println("the inverse of 1 is");
+    // println(Fp6::one().invert());
+    // println("the result of the multiplication is");
+    // println(a*b);
+    assert((a*b).eq(Fp6::one()));
+}

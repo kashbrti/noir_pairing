@@ -1,9 +1,9 @@
+use crate::fp12::Fp12;
 use crate::fp2::Fp2;
 use crate::fp6::Fp6;
-use crate::fp12::Fp12;
 use crate::g1::G1Affine;
 use crate::g2::{G2Affine, G2Projective};
-use crate::helpers::{__final_exponentiation, __compute_c_u, res_reciprocity};
+use crate::helpers::{__compute_c_u, __final_exponentiation, res_reciprocity};
 
 // Ref: https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs
 
