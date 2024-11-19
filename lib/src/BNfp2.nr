@@ -1,10 +1,7 @@
 use bignum::BigNum;
 use bignum::fields::bn254Fq::BN254_Fq_Params;
 
-// Parameter reference https://github.com/noir-lang/noir_bigcurve/blob/main/src/curves/bls12_381.nr#L60
 pub type Fp = BigNum<3, 254, BN254_Fq_Params>;
-
-// Code reference https://github.com/zkcrypto/bls12_381/blob/main/src/fp2.rs
 
 // c0 + c1*u
 // F_p / u^2 + 1
@@ -444,7 +441,6 @@ fn test_mul_by_nonresidue() {
 // #[test]
 // fn test_multiplication() {
 //     // zkcrypto test
-//     // https://github.com/zkcrypto/bls12_381/blob/main/src/fp2.rs#L465
 //     let a = Fp2::new(
 //         [
 //         0xae4a11560fd2b96a09231943c6dab,
@@ -495,7 +491,6 @@ fn test_mul_by_nonresidue() {
 
 // #[test]
 // fn test_square() {
-//     // https://github.com/zkcrypto/bls12_381/blob/main/src/fp2.rs#L423
 //     let a = Fp2::new(
 //         [
 //         0xae4a11560fd2b96a09231943c6dab,

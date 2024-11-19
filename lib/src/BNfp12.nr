@@ -95,6 +95,47 @@ impl Fp12 {
         Fp12 { c0: Fp6::new(t0, t2, t4), c1: Fp6::new(t1, t3, t5) }
     }
 
+    pub fn second_degree_frobenius_map(self: Self) -> Self {
+        self.frobenius_map().frobenius_map()
+    }
+
+    pub fn third_degree_frobenius_map(self: Self) -> Self {
+        self.frobenius_map().frobenius_map().frobenius_map()
+    }
+
+    pub fn exp_lambda(self) -> Self {
+        // q = 36x^4 + 36x^3 + 24x^2 + 6x + 1
+        // lambda = 6x + 2 + q - q^2 + q^3
+        //
+        // exp_lambda = self ** lambda
+
+        // this is cursed.
+        // TODO: write comptime function `Fp -> [bool; N]`
+        let exp_bits_as_bools = [
+            true, false, false, false, true, true, true, true, true, false, false, true, false,
+            false, false, false, true, false, false, true, false, true, true, false, false, true,
+            false, true, false, false, true, false, false, false, true, false, true, true, false,
+            true, false, true, false, false, true, false, false, true, true, false, false, true,
+            false, true, true, true, false, false, true, false, false, false, true
+        ];
+
+        let mut a = self;
+        let mut exp = Fp12::one();
+
+        for bit in exp_bits_as_bools {
+            if bit {
+                exp *= a;
+            }
+            a *= a;
+        }
+
+        let first_frobenius = self.frobenius_map();
+        let second_frobenius = first_frobenius.frobenius_map();
+        let third_frobenius = second_frobenius.frobenius_map();
+
+        exp * first_frobenius * second_frobenius * third_frobenius.invert()
+    }
+
     // Returns inverse and errors if there is no inverse
     pub fn invert(self: Self) -> Self {
         let mut t = (self.c0.square()).sub((self.c1.square().mul_by_nonresidue()));
