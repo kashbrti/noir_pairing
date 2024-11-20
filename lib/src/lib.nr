@@ -9,6 +9,8 @@ mod test;
 pub mod BNfp2;
 pub mod BNfp6;
 pub mod BNfp12;
+pub mod BNg1;
+pub mod BNg2;
 
 // export at the top level:
 pub use fp12::Fp12;
