@@ -94,11 +94,12 @@ impl Fp12 {
 
         Fp12 { c0: Fp6::new(t0, t2, t4), c1: Fp6::new(t1, t3, t5) }
     }
-
+    
+    // to do: switch the second degree frobenius map to use the precomputation table 
     pub fn second_degree_frobenius_map(self: Self) -> Self {
         self.frobenius_map().frobenius_map()
     }
-
+    // to do: switch the third degree frobenius map to use the precomputation table
     pub fn third_degree_frobenius_map(self: Self) -> Self {
         self.frobenius_map().frobenius_map().frobenius_map()
     }
@@ -122,17 +123,17 @@ impl Fp12 {
         let mut exp = Fp12::one();
 
         for bit in exp_bits_as_bools {
-            exp *= exp;
             if bit {
                 exp *= a;
             }
+            a *= a;
         }
 
         let first_frobenius = self.frobenius_map();
         let second_frobenius = first_frobenius.frobenius_map();
         let third_frobenius = second_frobenius.frobenius_map();
 
-        exp * first_frobenius * second_frobenius * third_frobenius.invert()
+        exp * first_frobenius * second_frobenius.invert() * third_frobenius
     }
 
     // Returns inverse and errors if there is no inverse
