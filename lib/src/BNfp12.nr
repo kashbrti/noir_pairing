@@ -137,10 +137,20 @@ impl Fp12 {
 
     // Returns inverse and errors if there is no inverse
     pub fn invert(self: Self) -> Self {
-        let mut t = (self.c0.square()).sub((self.c1.square().mul_by_nonresidue()));
-        // This will error if there's no inverse
-        t = t.invert();
-        Fp12 { c0: self.c0 * t, c1: self.c1 * t.neg() }
+        let c02 = self.c0.mul(self.c0);
+        let c12 = self.c1.mul(self.c1);
+        let c12 = c12.mul_by_nonresidue();
+        let c02 = c02.sub(c12);
+        let c0 = c02.invert();
+        let c1 = c02.invert();
+        let c0 = c0.mul(self.c0);
+        let c1 = c1.mul(self.c1);
+        let c1 = c1.neg();
+
+        Self{
+            c0,
+            c1,
+        }
     }
 
     pub(crate) fn mul_by_014(self: Self, c0: Fp2, c1: Fp2, c4: Fp2) -> Fp12 {
@@ -172,22 +182,12 @@ impl std::ops::Sub for Fp12 {
 
 impl std::ops::Mul for Fp12 {
     fn mul(self, other: Self) -> Self {
-        let aa = self.c0 * other.c0;
+        let a0 = self.c0 * other.c0;
+        let a1 = self.c0 * other.c1 + self.c1 * other.c0;
+        let a2 = self.c1 * other.c1;
 
-        let bb = self.c1 * other.c1;
-
-        let o = other.c0 + other.c1;
-
-        // c1 = (self.c1 + self.c0) * (other.c0 + other.c1) - aa - bb
-        let mut c1 = self.c1 + self.c0;
-        c1 = c1 * o;
-        c1 = c1 - aa;
-        c1 = c1 - bb;
-
-        // c0 = bb * nonresidue + aa
-        let mut c0 = bb.mul_by_nonresidue();
-        c0 = c0 + aa;
-
+        let c0 = a0 + a2.mul_by_nonresidue();
+        let c1 = a1;
         // Return the final Fp12 structure
         Self { c0, c1 }
     }
@@ -662,8 +662,8 @@ fn test_invert() {
         },
     };
     let b: Fp12 = a.invert();
-    let check = a.mul(a);
-    assert(check.eq(a.square()));
+    let check = a.mul(b);
+    assert(check.eq(Fp12::one()));
 }
 
 #[test]
