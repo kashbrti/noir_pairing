@@ -126,14 +126,13 @@ impl Fp2 {
 
     // (u+9) is a quadratric residue in Fp2
     // returns self * (u+9)
-    pub fn mul_by_nonresidue(self: Self) -> Self {
-        // Multiply c0 + c1*u by u + 1:
+    pub fn mul_by_non_residue(self: Self) -> Self {
+        // Multiply c0 + c1*u by u + 9:
         let nine = Self::new([9, 0, 0], [0, 0, 0]);
         let mult_by_nine = self.mul(nine);
-        let mult_by_u = Self { c0: self.c0 - self.c1, c1: self.c0 + self.c1 };
-        mult_by_nine + mult_by_u 
+        let mult_by_u = Self { c0:  self.c1.neg(), c1: self.c0  };
+        mult_by_nine + mult_by_u
     }
-    
 
     // the constant generated according to the BN tower, ref:https://hackmd.io/@Wimet/ry7z1Xj-2#Frobenius-Operator
     fn mul_by_non_residue_power_1(self: Self) -> Self {
@@ -378,14 +377,21 @@ fn test_neg() {
 #[test]
 fn test_mul_by_nonresidue() {
     let a = Fp2::one();
-    let b = a.mul_by_nonresidue();
-    println("c0");
-    println(b.c0.limbs);
-    println("c1");
-    println(b.c1.limbs);
+    let b = a.mul_by_non_residue();
+    let c: Fp2 = Fp2::new([1, 0, 0], [1, 0, 0]);
+    let d = c.mul_by_non_residue();
+    assert(b == Fp2::new([9, 0, 0], [1, 0, 0]));
+    println(d);
+    assert(d == Fp2::new([8, 0, 0], [10, 0, 0]));
 
-    assert(b == Fp2::new([1, 0, 0], [1, 0, 0]));
 }
+
+// #[test]
+// fn test_mul_by_non_residue_power() {
+//     let a = Fp2::one();
+//     let b = a.mul_by_non_residue();
+//     assert(b == Fp2::new([9, 0, 0], [1, 0, 0]));
+// }
 
 // TODO: write tests for everything elses
 
