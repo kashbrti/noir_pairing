@@ -1,14 +1,13 @@
 use crate::BNfp12::Fp12;
 use crate::BNfp2::Fp2;
 use crate::BNfp6::Fp6;
+use crate::EXP_mod::EXP_mod_Params;
 use crate::g1::G1Affine;
 use crate::g2::{G2Affine, G2Projective};
+use crate::Mod_p12m1_Params::MOD_p12m1_Params;
 use bignum::BigNum;
 use bignum::fields::bn254Fq::BN254_Fq_Params;
-use bignum::fns::unconstrained_ops::{__pow};
-use crate::EXP_mod::EXP_mod_Params;
-use crate::Mod_p12m1_Params::MOD_p12m1_Params;
-
+use bignum::fns::unconstrained_ops::__pow;
 
 // pub type ExponentsType = BigNum<4, 381>;
 // TODO: we need bignum params for the exponents mod p^12-1
@@ -16,14 +15,10 @@ use crate::Mod_p12m1_Params::MOD_p12m1_Params;
 // we need 3rd root and r-th root algorithms
 // we need to compute the value of lambda = \sum_i a_i p^i such that a_i is smooth
 pub type Fp = BigNum<3, 254, BN254_Fq_Params>;
-// the type of integers modulo p^12-1 /r 
+// the type of integers modulo p^12-1 /r
 pub type Mod_h = BigNum<24, 2790, EXP_mod_Params>;
-// the type of integers modulo p^12 -1 
+// the type of integers modulo p^12 -1
 pub type Mod_p12m1 = BigNum<26, 3044, MOD_p12m1_Params>;
-
-
-
-
 
 /// Unconstrained final exponentiation
 pub(crate) unconstrained fn __final_exponentiation(input: Fp12) -> Fp12 {
@@ -66,39 +61,89 @@ pub(crate) unconstrained fn __final_exponentiation(input: Fp12) -> Fp12 {
 }
 
 // this is a version of Tonneli-Shanks algorithm to compute the 3rd root of unity in Fp12
-pub (crate) unconstrained fn __tonneli_shanks(input: Fp12) -> Fp12 {
-    // the fixed cube non-residue w 
-    let w = Fp12{
-        c0: Fp6{
-            c0: Fp2::zero(),
-            c1: Fp2::zero(),
-            c2: Fp2::one(),
-        },
-        c1: Fp6::zero(),
-    };
+pub(crate) unconstrained fn __tonneli_shanks(input: Fp12) -> Fp12 {
+    // the fixed cube non-residue w
+    let w = Fp12 { c0: Fp6 { c0: Fp2::zero(), c1: Fp2::zero(), c2: Fp2::one() }, c1: Fp6::zero() };
     // write p-1 = 3^r * s
     // p-1 = 3^2 * (2432026985759919469138489527250808343188479017477535962521004210516136245398)
-    let s = Mod_p12m1 {limbs: [960815080587338423254064115271022742, 636026797166128075104453522897650505, 1376, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0]};
-    // exp = (s+1)/3 
-    let exp = Mod_p12m1 {limbs: [1206423690719056723020559411943903965, 1098160929578653273637355881152779885, 458, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0]};
-    // x = input^exp 
+    let s = Mod_p12m1 {
+        limbs: [
+            960815080587338423254064115271022742,
+            636026797166128075104453522897650505,
+            1376,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+    };
+    // exp = (s+1)/3
+    let exp = Mod_p12m1 {
+        limbs: [
+            1206423690719056723020559411943903965,
+            1098160929578653273637355881152779885,
+            458,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+    };
+    // x = input^exp
     // TODO: add the unconstrained pow function for FP12
-    let x = input.__pow::<Mod_p12m1, 26, 3044>(exp); 
-    let x = Fp12::one(); 
-    x 
+    let x = input.__pow::<Mod_p12m1, 26, 3044>(exp);
+    let x = Fp12::one();
+    x
 }
 
-
-
-
 pub(crate) unconstrained fn __compute_c_u(input: Fp12, root: Fp12) -> (Fp12, Fp12) {
-    let r = Mod_h {limbs: [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}; 
-    let mp = Mod_h {limbs: [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]};  
+    let r =
+        Mod_h { limbs: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
+    let mp =
+        Mod_h { limbs: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] };
     let rp = r.__invmod();
     let mpp = mp.__invmod();
     let mut s = 0;
-    let  d:u32 = 3;
-    
+    let d: u32 = 3;
+
     // check if input^((p^12-1)/3) = 1
     // todo ================================
     // continue

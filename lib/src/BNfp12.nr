@@ -182,21 +182,24 @@ impl Fp12 {
         Fp12 { c0, c1 }
     }
 
-    pub(crate) unconstrained fn __pow<T,let N : u32,let MOD_BITS: u32>(self: Self, exp: T) -> Self where T: BigNumTrait {
+    /// Returns unconstrained exponentiation of an element in `Fp12`.
+    pub(crate) unconstrained fn __pow<T, let N: u32, let MOD_BITS: u32>(self: Self, exp: T) -> Self
+    where
+        T: BigNumTrait,
+    {
         let num_bits = MOD_BITS + 1;
-        let mut accumulator = Fp12::one(); 
+        let mut accumulator = Fp12::one();
         let exp_limbs: [Field; N] = exp.get_limbs_slice().as_array();
         let x: U60Repr<N, 2> = U60Repr::from(exp_limbs);
         for i in 0..num_bits {
             accumulator = accumulator * accumulator;
             if x.get_bit(num_bits - i - 1) {
-                accumulator =accumulator * self;
+                accumulator = accumulator * self;
             }
         }
         accumulator
-    }   
+    }
 }
-
 
 impl std::ops::Add for Fp12 {
     fn add(self, other: Self) -> Self {
@@ -807,7 +810,36 @@ pub type Mod_p12m1 = BigNum<26, 3044, MOD_p12m1_Params>;
 #[test]
 fn test_pow() {
     let a = Fp12::one();
-    let exp = Mod_p12m1 {limbs: [1206423690719056723020559411943903965, 1098160929578653273637355881152779885, 458, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0]};
+    let exp = Mod_p12m1 {
+        limbs: [
+            1206423690719056723020559411943903965,
+            1098160929578653273637355881152779885,
+            458,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ],
+    };
     let res = a.__pow::<Mod_p12m1, 26, 3044>(exp);
     assert(res.eq(a));
 }
