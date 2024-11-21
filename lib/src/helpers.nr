@@ -202,7 +202,6 @@ fn cycolotomic_exp(f: Fp12) -> Fp12 {
     tmp.conjugate()
 }
 
-
 // #[test]
 // fn test_fp12_exponentiation(){
 //     let input = Fp12::one();

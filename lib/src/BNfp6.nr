@@ -321,7 +321,7 @@ impl Fp6 {
         let c_1 = a_0 * a_1 + a_1 * a_0 + c_4;
         let c_2 = a_0 * a_2 + a_1 * a_1 + a_2 * a_0 + c_3;
 
-        Self { c0: c_0 , c1: c_1, c2: c_2 }
+        Self { c0: c_0, c1: c_1, c2: c_2 }
     }
 
     /// Returns the elements multiplicative inverse.
@@ -368,11 +368,7 @@ impl Fp6 {
         let c1 = tmp.mul(c1);
         let c2 = tmp.mul(c2);
 
-        Self {
-            c0,
-            c1,
-            c2,
-        }         
+        Self { c0, c1, c2 }
     }
 }
 
@@ -391,24 +387,24 @@ impl std::ops::Sub for Fp6 {
 impl std::ops::Mul for Fp6 {
     // TODO: mudify this to use the optimized mul_interleaved
     // fn mul(self: Self, other: Self) -> Self {
-        // let a_0 = self.c0;
-        // let a_1 = self.c1;
-        // let a_2 = self.c2;
+    // let a_0 = self.c0;
+    // let a_1 = self.c1;
+    // let a_2 = self.c2;
 
-        // let b_0 = other.c0;
-        // let b_1 = other.c1;
-        // let b_2 = other.c2;
+    // let b_0 = other.c0;
+    // let b_1 = other.c1;
+    // let b_2 = other.c2;
 
-        // let c_3 = (a_1 * b_2 + a_2 * b_1).mul_by_nonresidue();
-        // let c_4 = (a_2 * b_2).mul_by_nonresidue();
+    // let c_3 = (a_1 * b_2 + a_2 * b_1).mul_by_nonresidue();
+    // let c_4 = (a_2 * b_2).mul_by_nonresidue();
 
-        // let c_0 = a_0 * b_0 + c_3;
-        // let c_1 = a_0 * b_1 + a_1 * b_0 + c_4;
-        // let c_2 = a_0 * b_2 + a_1 * b_1 + a_2 * b_0 + c_3;
+    // let c_0 = a_0 * b_0 + c_3;
+    // let c_1 = a_0 * b_1 + a_1 * b_0 + c_4;
+    // let c_2 = a_0 * b_2 + a_1 * b_1 + a_2 * b_0 + c_3;
 
-        // Self { c0: c_0 , c1: c_1 , c2: c_2 }
-// }
-        fn mul(self: Self, other: Self) -> Self {
+    // Self { c0: c_0 , c1: c_1 , c2: c_2 }
+    // }
+    fn mul(self: Self, other: Self) -> Self {
         let a_a = self.c0.mul(other.c0);
         let b_b = self.c1.mul(other.c1);
         let c_c = self.c2.mul(other.c2);
@@ -445,11 +441,7 @@ impl std::ops::Mul for Fp6 {
         let c_c_mul_by_nonres = c_c.mul_by_non_residue();
         let t2 = t2.add(c_c_mul_by_nonres);
 
-        Self{
-            c0: t1,
-            c1: t2,
-            c2: t3,
-        }
+        Self { c0: t1, c1: t2, c2: t3 }
     }
 }
 
@@ -524,9 +516,8 @@ fn test_mul_zero() {
     assert(a * zero == zero);
 }
 
-
 #[test]
-fn test_mul(){
+fn test_mul() {
     let a = Fp6 {
         c0: Fp2::new(
             [395488726691442830429832050603406204, 821075477437255834874989749241978678, 11793],
@@ -541,8 +532,6 @@ fn test_mul(){
             [415311780186006812910310129930084039, 207811584817201665093984844957365187, 6876],
         ),
     };
-
-
 
     let b = Fp6 {
         c0: Fp2::new(
@@ -574,8 +563,6 @@ fn test_mul(){
         ),
     };
     assert(a * b == c);
-
-
 }
 
 #[test]
@@ -893,10 +880,9 @@ fn test_square() {
     println(a.square());
     println("a^2 should be ");
     println(a * a);
-    let b = a.square(); 
+    let b = a.square();
     assert(b.eq(a * a));
 }
-
 
 #[test]
 fn test_invert() {
@@ -914,6 +900,6 @@ fn test_invert() {
             [496665123426422059639752844234206160, 350210767051572081629044293495878811, 1877],
         ),
     );
-    let b = a.invert(); 
-    assert((a*b).eq(Fp6::one()));
+    let b = a.invert();
+    assert((a * b).eq(Fp6::one()));
 }

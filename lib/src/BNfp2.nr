@@ -154,7 +154,7 @@ impl Fp2 {
         // Multiply c0 + c1*u by u + 9:
         let nine = Self::new([9, 0, 0], [0, 0, 0]);
         let mult_by_nine = self.mul(nine);
-        let mult_by_u = Self { c0:  self.c1.neg(), c1: self.c0  };
+        let mult_by_u = Self { c0: self.c1.neg(), c1: self.c0 };
         mult_by_nine + mult_by_u
     }
 
@@ -438,7 +438,6 @@ fn test_mul_by_nonresidue() {
     assert(b == Fp2::new([9, 0, 0], [1, 0, 0]));
     println(d);
     assert(d == Fp2::new([8, 0, 0], [10, 0, 0]));
-
 }
 
 // #[test]

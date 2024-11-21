@@ -102,7 +102,7 @@ impl Fp12 {
 
     /// Returns the result of the frobenius endomorphism two times over `Fp12`
     ///
-    /// > TODO: switch the second degree frobenius map to use the precomputation table 
+    /// > TODO: switch the second degree frobenius map to use the precomputation table
     pub fn second_degree_frobenius_map(self: Self) -> Self {
         self.frobenius_map().frobenius_map()
     }
@@ -162,10 +162,7 @@ impl Fp12 {
         let c1 = c1.mul(self.c1);
         let c1 = c1.neg();
 
-        Self{
-            c0,
-            c1,
-        }
+        Self { c0, c1 }
     }
 
     /// Performs a sparse multiplication between `Fp12` and three elements of `Fp2`.
