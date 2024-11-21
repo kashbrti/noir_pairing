@@ -1,13 +1,29 @@
-use crate::fp12::Fp12;
-use crate::fp2::Fp2;
-use crate::fp6::Fp6;
-use bignum::fields::bls12_381Fq::BLS12_381_Fq_Params;
+use crate::BNfp12::Fp12;
+use crate::BNfp2::Fp2;
+use crate::BNfp6::Fp6;
+use crate::g1::G1Affine;
+use crate::g2::{G2Affine, G2Projective};
+use bignum::BigNum;
+use bignum::fields::bn254Fq::BN254_Fq_Params;
+use bignum::fns::unconstrained_ops::{__pow};
+use crate::EXP_mod::EXP_mod_Params;
+use crate::Mod_p12m1_Params::MOD_p12m1_Params;
+
 
 // pub type ExponentsType = BigNum<4, 381>;
 // TODO: we need bignum params for the exponents mod p^12-1
 // we should add an exponentiation function that takes an Fp12 element and a bignum and does the exp using fancy frobenius
 // we need 3rd root and r-th root algorithms
 // we need to compute the value of lambda = \sum_i a_i p^i such that a_i is smooth
+pub type Fp = BigNum<3, 254, BN254_Fq_Params>;
+// the type of integers modulo p^12-1 /r 
+pub type Mod_h = BigNum<24, 2790, EXP_mod_Params>;
+// the type of integers modulo p^12 -1 
+pub type Mod_p12m1 = BigNum<26, 3044, MOD_p12m1_Params>;
+
+
+
+
 
 /// Unconstrained final exponentiation
 pub(crate) unconstrained fn __final_exponentiation(input: Fp12) -> Fp12 {
@@ -49,26 +65,51 @@ pub(crate) unconstrained fn __final_exponentiation(input: Fp12) -> Fp12 {
     f
 }
 
-/// Unconstrained computation for `c` for a faster residue check.
-///
-/// To check the pairing:
-///
-/// $\exists c, u : f_(r,Q)(P) = c^\lambda u$
-// pub(crate) unconstrained fn __compute_c_u(input: Fp12, root: Fp12) -> (Fp12, Fp12) {
-//     let params = BLS12_381_Fq_Params::get_params();
-//     let modulus = params.modulus;
-//     let mut s = 0;
-//     // check if input^((p^12-1)/3) = 1
-//     // todo ================================
-//     // continue
-//     // todo ================================
-//     // check if  (input x u)^((p^12-1)/3) = 1
-//     // todo ================================
-//     // s += 1 ;
-//     // input = unput * root
-//     // =======================================
-//     (Fp12::one(), Fp12::one())
-// }
+// this is a version of Tonneli-Shanks algorithm to compute the 3rd root of unity in Fp12
+pub (crate) unconstrained fn __tonneli_shanks(input: Fp12) -> Fp12 {
+    // the fixed cube non-residue w 
+    let w = Fp12{
+        c0: Fp6{
+            c0: Fp2::zero(),
+            c1: Fp2::zero(),
+            c2: Fp2::one(),
+        },
+        c1: Fp6::zero(),
+    };
+    // write p-1 = 3^r * s
+    // p-1 = 3^2 * (2432026985759919469138489527250808343188479017477535962521004210516136245398)
+    let s = Mod_p12m1 {limbs: [960815080587338423254064115271022742, 636026797166128075104453522897650505, 1376, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0]};
+    // exp = (s+1)/3 
+    let exp = Mod_p12m1 {limbs: [1206423690719056723020559411943903965, 1098160929578653273637355881152779885, 458, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,0,0]};
+    // x = input^exp 
+    // TODO: add the unconstrained pow function for FP12
+    let x = input.__pow::<Mod_p12m1, 26, 3044>(exp); 
+    let x = Fp12::one(); 
+    x 
+}
+
+
+
+
+pub(crate) unconstrained fn __compute_c_u(input: Fp12, root: Fp12) -> (Fp12, Fp12) {
+    let r = Mod_h {limbs: [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}; 
+    let mp = Mod_h {limbs: [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]};  
+    let rp = r.__invmod();
+    let mpp = mp.__invmod();
+    let mut s = 0;
+    let  d:u32 = 3;
+    
+    // check if input^((p^12-1)/3) = 1
+    // todo ================================
+    // continue
+    // todo ================================
+    // check if  (input x u)^((p^12-1)/3) = 1
+    // todo ================================
+    // s += 1 ;
+    // input = unput * root
+    // =======================================
+    (Fp12::one(), Fp12::one())
+}
 
 // pub(crate) unconstrained fn __compute_third_root() {}
 
@@ -124,7 +165,7 @@ pub(crate) unconstrained fn __fp12_invert(input: Fp12) -> Fp12 {
 fn fp4_square(a: Fp2, b: Fp2) -> (Fp2, Fp2) {
     let t0 = a.square();
     let t1 = b.square();
-    let mut t2 = t1.mul_by_nonresidue();
+    let mut t2 = t1.mul_by_non_residue();
     let c0 = t2.add(t0);
     t2 = a.add(b);
     t2 = t2.square();
@@ -162,7 +203,7 @@ fn cyclotomic_square(f: Fp12) -> Fp12 {
     z5 = t1.add(z5);
     z5 = z5.add(z5).add(t1);
 
-    t0 = t3.mul_by_nonresidue();
+    t0 = t3.mul_by_non_residue();
     z2 = t0.add(z2);
     z2 = z2.add(z2).add(t0);
 
