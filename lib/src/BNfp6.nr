@@ -2,37 +2,52 @@ use crate::BNfp2::Fp;
 use crate::BNfp2::Fp2;
 use bignum::BigNum;
 
-// c0 + c1*v + c2*v^2
-// F_{p^6} =  F_{p^2}[v] / (v^3 - (9+u))
+/// Polynomial Extension Field Tower of Degree `6`
+///
+/// Representable as $F_{p^6}[v] =  F_{p^2} / v^3 - u - 1$, we implement
+/// `c0 + c1 * v + (c2 * v) ** 2` such that `c0`, `c1`, and `c2` are elements of `Fp2`.
 pub struct Fp6 {
+    /// Constant Coefficient
     pub(crate) c0: Fp2,
+    /// Exponent `1` Coefficient
     pub(crate) c1: Fp2,
+    /// Exponent `2` Coefficient
     pub(crate) c2: Fp2,
 }
 
 // TODO (if possible) make underlying (Fp2) function unconstrained and then constrain for better performance
 
 impl Fp6 {
+    /// Constructs an element of `Fp6` from three elements of `Fp2`.
     pub fn new(c0: Fp2, c1: Fp2, c2: Fp2) -> Self {
         Fp6 { c0, c1, c2 }
     }
 
+    /// Constructs the additive unit (zero) element.
     pub fn zero() -> Self {
         Fp6 { c0: Fp2::zero(), c1: Fp2::zero(), c2: Fp2::zero() }
     }
 
+    /// Constructs the multiplicative unit (one) element.
     pub fn one() -> Self {
         Fp6 { c0: Fp2::one(), c1: Fp2::zero(), c2: Fp2::zero() }
     }
 
+    /// Returns the element's additive inverse (negation).
     pub fn neg(self: Self) -> Self {
         Self { c0: self.c0.neg(), c1: self.c1.neg(), c2: self.c2.neg() }
     }
 
+    /// Multiply `Fp6` coefficients by an element in `Fp2`
+    ///
+    /// This is a component of sparse multiplication in `Fp12::mul_by_014`
     pub fn mul_by_1(self: Self, c1: Fp2) -> Fp6 {
         Fp6 { c0: (self.c2 * c1).mul_by_non_residue(), c1: self.c0 * c1, c2: self.c1 * c1 }
     }
 
+    /// Multiply `Fp6` coefficients by two elements in `Fp2`
+    ///
+    /// This is a component of sparse multiplication in `Fp12::mul_by_014`
     pub fn mul_by_01(self: Self, c0: Fp2, c1: Fp2) -> Fp6 {
         let a_a = self.c0 * c0;
         let b_b = self.c1 * c1;
@@ -46,18 +61,12 @@ impl Fp6 {
         Fp6 { c0: t1, c1: t2, c2: t3 }
     }
 
-    // v is a quadratic residue in Fp6
-    // returns self * v
+    /// Multiply an element by the sextic non-residue `v` in `Fp6`.
+    ///
+    /// This is used for optimized multiplication over `Fp6`.
+    ///
+    /// `(c0 + c1 * v + c2 * v^2) * v` simplifies to `(c2 * (u+1)) + c0*v + c1*(v**2)`.
     pub fn mul_by_nonresidue(self: Self) -> Self {
-        // Multiply c0 + c1 * v + c2 * v^2 by v
-        // (c0 + c1 * v + c2 * v^2) * v
-        // = c0 * v + c1 * v^2 + c2 * v^3
-        // And v^3 equals (u + 1):
-        // = c0 * v + c1 * v^2 + c2 * (u + 1)
-        // = c0 * v + c1 * v^2 + c2 * u + c2
-        // rewrite according to the coefficients
-        // = (c2 * u + c2) + (c0 * v) + (c1 * v^2)
-        // = (c2 * (u + 1)) + (c0 * v) + (c1 * v^2)
         Fp6 {
             c0: self.c2.mul_by_non_residue(), // c2 * (u + 1)
             c1: self.c0, // c0
@@ -65,9 +74,9 @@ impl Fp6 {
         }
     }
 
-    // https://eprint.iacr.org/2022/367
-    // for inputs `a = (a0, a1, a2)` and `b = (b0, b1, b2)`,
-    // return multiplication a*b
+    /// Performs multiplication of two `Fp6` elements using the full-tower interleaving strategy
+    ///
+    /// Reference Document: https://eprint.iacr.org/2022/367 (Algorithm 5)
     fn mul_interleaved(a: Self, b: Self) -> Self {
         unsafe {
             // Unconstrained calculations first
@@ -298,6 +307,7 @@ impl Fp6 {
         }
     }
 
+    /// Returns the square of the element.
     pub fn square(self: Self) -> Self {
         // s0 = self.c0^2
         let a_0 = self.c0;
@@ -314,29 +324,11 @@ impl Fp6 {
         Self { c0: c_0 , c1: c_1, c2: c_2 }
     }
 
-    // Returns inverse and errors if there is no inverse
-    // pub fn invert(self: Self) -> Self {
-    //     unsafe {
-    //         let mut c0 = self.c1.mul(self.c2).mul_by_nonresidue();
-    //         c0 = self.c0.square() - c0;
-
-    //         let mut c1 = self.c2.square().mul_by_nonresidue();
-    //         c1 = c1 - (self.c0 * self.c1);
-
-    //         let mut c2 = self.c1.square();
-    //         c2 = c2 - (self.c0 * self.c2);
-
-    //         let tmp = self.c1.mul(c2).add(self.c2.mul(c1)).mul_by_nonresidue().add(self.c0.mul(c0));
-    //         // This will error if there is no inverse
-    //         let inv_tmp = tmp.invert();
-
-    //         let res_c0 = c0 * inv_tmp;
-    //         let res_c1 = c1 * inv_tmp;
-    //         let res_c2 = c2 * inv_tmp;
-
-    //         Self { c0: res_c0, c1: res_c1, c2: res_c2 }
-    //     }
-    // }
+    /// Returns the elements multiplicative inverse.
+    ///
+    /// ## Panics
+    ///
+    /// - if there is no multiplicative inverse for the element.
     pub fn invert(self: Self) -> Self {
         let c0 = self.c2;
         let c0 = c0.mul_by_non_residue();

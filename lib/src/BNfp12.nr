@@ -1,46 +1,46 @@
 use crate::BNfp2::Fp2;
 use crate::BNfp6::Fp6;
 
-// c0 + c1*w
-// F_{p^12} = F_{p^6} / w^2 - v
+/// Polynomial Extension Field Tower of Degree `12`.
+///
+/// Representable as $F_{p^{12}}[w] = F_{p^6}[w] / (w^2 - v)$, we implement `c0 + c1 * w` such that
+/// `c0` and `c1` are elements of `Fp6`.
 pub struct Fp12 {
+    /// Constant Coefficient
     pub(crate) c0: Fp6,
+    /// Exponent `1` Coefficient
     pub(crate) c1: Fp6,
 }
 
-// pub trait ExtentionField {
-//     fn mul_by_nonresidue(self: Self) -> Self;
-//     fn conjugate(self: Self) -> Self;
-//     fn square(self: Self) -> Self;
-//     fn frobenius_map(self: Self) -> Self;
-//     fn invert(self: Self) -> Self;
-//     fn add(self: Self, other: Self) -> Self;
-//     fn sub(self: Self, other: Self) -> Self;
-//     fn mul(self: Self, other: Self) -> Self;
-//     fn cyclotomic_square(self: Self) -> Self;
-// }
-
 impl Fp12 {
+    /// Constructs an element of `Fp12` from two elements of `Fp6`.
     pub fn new(c0: Fp6, c1: Fp6) -> Self {
         Fp12 { c0, c1 }
     }
 
+    /// Constructs the additive unit (zero) element.
     pub fn zero() -> Self {
         Fp12 { c0: Fp6::zero(), c1: Fp6::zero() }
     }
 
+    /// Constructs the multiplicative unit (one) element.
     pub fn one() -> Self {
         Fp12 { c0: Fp6::one(), c1: Fp6::zero() }
     }
 
+    /// Returns the element's additive inverse (negation).
     pub fn neg(self: Self) -> Self {
         Self { c0: self.c0.neg(), c1: self.c1.neg() }
     }
 
+    /// Returns the conjugate of the element.
+    ///
+    /// Functionally, this inverts the exponent `1` coefficient, not changing the constant.
     pub fn conjugate(self: Self) -> Self {
         Self { c0: self.c0, c1: self.c1.neg() }
     }
 
+    /// Returns the square of the element.
     pub fn square(self: Fp12) -> Fp12 {
         // ab = self.c0 * self.c1
         let ab = self.c0 * self.c1;
@@ -68,6 +68,11 @@ impl Fp12 {
         Fp12 { c0, c1 }
     }
 
+    /// Returns the result of the frobenius endomorphism over `Fp12`.
+    ///
+    /// For optimization purposes, `Fp12` being composed of `Fp6` elements compmosed of `Fp2`
+    /// elements enables a faster frobenius endomorphism over `Fp2` (see `Fp2::frobenius_map`) and
+    /// `Fp6`, finally we perform multiplication over `c1` by the constant defined below.
     pub fn frobenius_map(self: Self) -> Self {
         // Fp12 = Fp2[x]/X^6 - u
         // decompose the point into its Fp2 coefficients
@@ -94,22 +99,27 @@ impl Fp12 {
 
         Fp12 { c0: Fp6::new(t0, t2, t4), c1: Fp6::new(t1, t3, t5) }
     }
-    
-    // to do: switch the second degree frobenius map to use the precomputation table 
+
+    /// Returns the result of the frobenius endomorphism two times over `Fp12`
+    ///
+    /// > TODO: switch the second degree frobenius map to use the precomputation table 
     pub fn second_degree_frobenius_map(self: Self) -> Self {
         self.frobenius_map().frobenius_map()
     }
-    // to do: switch the third degree frobenius map to use the precomputation table
+
+    /// Returns the result of the frobenius endomorphism three times over `Fp12`
+    ///
+    /// > TODO: switch the third degree frobenius map to use the precomputation table
     pub fn third_degree_frobenius_map(self: Self) -> Self {
         self.frobenius_map().frobenius_map().frobenius_map()
     }
 
+    /// Exponentiate an element of `Fp12` to a constant `lambda`.
+    ///
+    /// $q = 36x^4 + 36x^3 + 24x^2 + 6x + 1$
+    ///
+    /// $\lambda = 6x + 2 + q - q^2 + q^3$
     pub fn exp_lambda(self) -> Self {
-        // q = 36x^4 + 36x^3 + 24x^2 + 6x + 1
-        // lambda = 6x + 2 + q - q^2 + q^3
-        //
-        // exp_lambda = self ** lambda
-        // this is cursed.
         // TODO: write comptime function `Fp -> [bool; N]`
         let exp_bits_as_bools = [
             true, false, false, false, true, true, true, true, true, false, false, true, false,
@@ -136,7 +146,11 @@ impl Fp12 {
         exp * first_frobenius * second_frobenius.invert() * third_frobenius
     }
 
-    // Returns inverse and errors if there is no inverse
+    /// Returns the elements multiplicative inverse.
+    ///
+    /// ## Panics
+    ///
+    /// - if there is no multiplicative inverse for the element.
     pub fn invert(self: Self) -> Self {
         let c02 = self.c0.mul(self.c0);
         let c12 = self.c1.mul(self.c1);
@@ -154,6 +168,9 @@ impl Fp12 {
         }
     }
 
+    /// Performs a sparse multiplication between `Fp12` and three elements of `Fp2`.
+    ///
+    /// > TODO: migrate to Ell data type instead.
     pub(crate) fn mul_by_014(self: Self, c0: Fp2, c1: Fp2, c4: Fp2) -> Fp12 {
         let aa = self.c0.mul_by_01(c0, c1);
         let bb = self.c1.mul_by_1(c4);

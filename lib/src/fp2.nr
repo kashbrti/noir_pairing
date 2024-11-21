@@ -1,22 +1,20 @@
 use bignum::BigNum;
 use bignum::fields::bls12_381Fq::BLS12_381_Fq_Params;
 
-/// Field Element BLS12-381
+/// Field Element in BLS12-381
 ///
 /// Uses `BigNum` with 4 limbs, 381 bit modulus, and BLS12-381 parameters defined in `noir-bignum`.
 pub type Fp = BigNum<4, 381, BLS12_381_Fq_Params>;
 
-/// Polyomial Extension Field of Degree `2`.
+/// Polyomial Extension Field of Degree `2`
 ///
 /// Representable as $F_p[u] / u^2 + 1$, we implement `c0 + c1 * u` such that `c0` and `c1` are
 /// elements of `Fp`.
-///
-/// Implementation Reference: https://github.com/zkcrypto/bls12_381/blob/main/src/fp2.rs
 pub struct Fp2 {
-    /// Constant Coefficient.
-    pub(crate) c0: Fp,
-    /// Exponent `1` Coefficient.
-    pub(crate) c1: Fp,
+    /// Constant Coefficient
+    pub c0: Fp,
+    /// Exponent `1` Coefficient
+    pub c1: Fp,
 }
 
 impl Fp2 {

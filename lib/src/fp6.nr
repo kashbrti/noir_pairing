@@ -1,16 +1,17 @@
 use crate::fp2::Fp2;
 use bignum::BigNum;
 
-/// Polynomial Extension Field Tower of Degree `6`.
+/// Polynomial Extension Field Tower of Degree `6`
 ///
 /// Representable as $F_{p^6}[v] =  F_{p^2} / v^3 - u - 1$, we implement
 /// `c0 + c1 * v + (c2 * v) ** 2` such that `c0`, `c1`, and `c2` are elements of `Fp2`.
-///
-/// Implementation Reference: https://github.com/zkcrypto/bls12_381/blob/main/src/fp6.rs
 pub struct Fp6 {
-    c0: Fp2,
-    c1: Fp2,
-    c2: Fp2,
+    /// Constant Coefficient
+    pub(crate) c0: Fp2,
+    /// Exponent `1` Coefficient
+    pub(crate) c1: Fp2,
+    /// Exponent `2` Coefficient
+    pub(crate) c2: Fp2,
 }
 
 impl Fp6 {
@@ -49,14 +50,16 @@ impl Fp6 {
         Self { c0: self.c0.neg(), c1: self.c1.neg(), c2: self.c2.neg() }
     }
 
-    /// Multiply all coefficients by an element of `Fp2`.
+    /// Multiply `Fp6` coefficients by an element in `Fp2`
     ///
-    /// > TODO: explain mul by non residue
+    /// This is a component of sparse multiplication in `Fp12::mul_by_014`
     pub fn mul_by_1(self: Self, c1: Fp2) -> Fp6 {
         Fp6 { c0: (self.c2.mul(c1)).mul_by_nonresidue(), c1: self.c0.mul(c1), c2: self.c1.mul(c1) }
     }
 
-    /// > TODO: document
+    /// Multiply `Fp6` coefficients by two elements in `Fp2`
+    ///
+    /// This is a component of sparse multiplication in `Fp12::mul_by_014`
     pub fn mul_by_01(self: Self, c0: Fp2, c1: Fp2) -> Fp6 {
         let a_a = self.c0.mul(c0);
         let b_b = self.c1.mul(c1);
@@ -124,9 +127,7 @@ impl Fp6 {
 
     /// Performs multiplication of two `Fp6` elements using the full-tower interleaving strategy
     ///
-    /// Reference Implementation: https://github.com/zkcrypto/bls12_381/blob/main/src/fp6.rs#L200
-    ///
-    /// Refernce Paper: https://eprint.iacr.org/2022/367 (Algorithm 5)
+    /// Reference Document: https://eprint.iacr.org/2022/367 (Algorithm 5)
     pub fn mul_interleaved(a: Self, b: Self) -> Self {
         unsafe {
             // Unconstrained calculations first

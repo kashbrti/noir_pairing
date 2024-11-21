@@ -1,28 +1,27 @@
 use crate::fp2::Fp2;
 
-// Ref: https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs
-
+/// BLS12-381 G2 Curve in Affine Space
 pub struct G2Affine {
+    /// X-coordinate in `Fp2`
     pub x: Fp2,
+    /// Y-coordinate in `Fp2`
     pub y: Fp2,
+    /// Whether the point is the point at infinity (identity)
     pub infinity: bool,
 }
 
+/// BLS12-381 G2 Curve in Projective Space
 pub struct G2Projective {
+    /// X-coordinate in `Fp2`
     pub x: Fp2,
+    /// Y-coordinate in `Fp2`
     pub y: Fp2,
+    /// Z-coordinate in `Fp2`
     pub z: Fp2,
 }
 
 impl G2Affine {
-    pub fn neg(self: Self) -> Self {
-        let mut y = self.y.neg();
-        if self.infinity {
-            y = Fp2::one();
-        }
-        G2Affine { x: self.x, y, infinity: self.infinity }
-    }
-
+    /// Returns the generator point in `G2`.
     pub fn generator() -> Self {
         G2Affine {
             x: Fp2::new(
@@ -56,14 +55,26 @@ impl G2Affine {
             infinity: false,
         }
     }
+
+    /// Performs Y-axis negation for an element in `G2`.
+    pub fn neg(self: Self) -> Self {
+        let mut y = self.y.neg();
+        if self.infinity {
+            y = Fp2::one();
+        }
+        G2Affine { x: self.x, y, infinity: self.infinity }
+    }
 }
 
 impl G2Projective {
+    /// Transforms a point from Affine Space to Projective Space
     pub fn from_affine(p: G2Affine) -> Self {
         let mut z = Fp2::one();
+
         if (p.infinity) {
             z = Fp2::zero();
         }
+
         G2Projective { x: p.x, y: p.y, z }
     }
 }
