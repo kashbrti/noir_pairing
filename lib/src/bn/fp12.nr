@@ -1,5 +1,9 @@
-use crate::BNfp2::Fp2;
-use crate::BNfp6::Fp6;
+use crate::bn::fp2::Fp2;
+use crate::bn::fp6::Fp6;
+use crate::bn::mod_p12m1::ModP12M1Params;
+use bignum::BigNumTrait;
+use bignum::BigNum;
+use bignum::utils::u60_representation::U60Repr;
 
 /// Polynomial Extension Field Tower of Degree `12`.
 ///
@@ -806,7 +810,7 @@ fn test_exp() {
     assert((res * res2).eq(Fp12::one()));
 }
 
-pub type Mod_p12m1 = BigNum<26, 3044, MOD_p12m1_Params>;
+pub type Mod_p12m1 = BigNum<26, 3044, ModP12M1Params>;
 #[test]
 fn test_pow() {
     let a = Fp12::one();

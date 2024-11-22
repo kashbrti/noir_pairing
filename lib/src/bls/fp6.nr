@@ -1,4 +1,4 @@
-use crate::fp2::Fp2;
+use crate::bls::fp2::Fp2;
 use bignum::BigNum;
 
 /// Polynomial Extension Field Tower of Degree `6`

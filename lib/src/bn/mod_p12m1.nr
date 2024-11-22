@@ -3,7 +3,7 @@ use bignum::params::BigNumParamsGetter;
 use bignum::utils::u60_representation::U60Repr;
 
 /// BigNum Parameters for integer arithmetic modulo $p^12 - 1$
-pub struct MOD_p12m1_Params {}
+pub struct ModP12M1Params {}
 
 // impl RuntimeBigNumParamsTrait<24> for EXP_mod_Params {
 //     fn modulus_bits() -> u32 {
@@ -11,13 +11,13 @@ pub struct MOD_p12m1_Params {}
 //     }
 // }
 
-impl BigNumParamsGetter<26, 3044> for MOD_p12m1_Params {
+impl BigNumParamsGetter<26, 3044> for ModP12M1Params {
     fn get_params() -> BigNumParams<26, 3044> {
-        MOD_p12m1_PARAMS
+        MOD_P12M1_PARAMS
     }
 }
 
-pub global MOD_p12m1_PARAMS: BigNumParams<26, 3044> = BigNumParams {
+pub global MOD_P12M1_PARAMS: BigNumParams<26, 3044> = BigNumParams {
     has_multiplicative_inverse: true,
     modulus: [
         0xbf0e6b068aafdbc1d4e2d2ca86f120,

@@ -1,5 +1,5 @@
-use crate::fp2::Fp2;
-use crate::fp6::Fp6;
+use crate::bls::fp2::Fp2;
+use crate::bls::fp6::Fp6;
 
 /// Polynomial Extension Field Tower of Degree `12`.
 ///
