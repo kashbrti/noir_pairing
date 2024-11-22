@@ -1,13 +1,12 @@
 use crate::fp12::Fp12;
 use crate::fp2::Fp2;
-use crate::fp6::Fp6;
 use crate::g1::G1Affine;
 use crate::g2::{G2Affine, G2Projective};
-use crate::helpers::{__compute_c_u, __final_exponentiation, res_reciprocity};
+use crate::helpers::__final_exponentiation;
 
-// Ref: https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs
-
-// https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs#L709
+/// Performs the doubling step of the Miller Algorithm and evaluates the line function.
+///
+/// Reference Document: https://eprint.iacr.org/2010/354.pdf (Algorithm 26)
 pub(crate) fn doubling_step(r: G2Projective) -> (Fp2, Fp2, Fp2, G2Projective) {
     let mut tmp0 = r.x.square();
     let mut tmp1 = r.y.square();
@@ -38,6 +37,9 @@ pub(crate) fn doubling_step(r: G2Projective) -> (Fp2, Fp2, Fp2, G2Projective) {
     (tmp0, tmp3, tmp6, G2Projective { x: new_r_x, y: new_r_y, z: new_r_z })
 }
 
+/// Performs the addition step of the Miller Algorithm and evaluates the line function.
+///
+/// Reference Document: https://eprint.iacr.org/2010/354.pdf (Algorithm 26)
 pub(crate) fn addition_step(r: G2Projective, q: G2Affine) -> (Fp2, Fp2, Fp2, G2Projective) {
     let zsquared = r.z.square();
     let ysquared = q.y.square();
@@ -74,6 +76,13 @@ pub(crate) fn addition_step(r: G2Projective, q: G2Affine) -> (Fp2, Fp2, Fp2, G2P
     (t10_double, t1_final, t9, G2Projective { x: new_r_x, y: new_r_y, z: new_r_z })
 }
 
+/// Performse sparse multiplication between `Fp12` and a triple of elements in `Fp2`.
+///
+/// The elements of `Fp2` represent non-zero coefficients in an element of `Fp12`. As algorithms
+/// 26 and 27 in the reference document below evaluate the line function internally, and as most
+/// of the evaluated coefficients are always zero, we represent this sparsely.
+///
+/// > TODO: migrate to Ell data type instead.
 pub(crate) fn ell(f: Fp12, coeffs: (Fp2, Fp2, Fp2), p: G1Affine) -> Fp12 {
     let c0c0 = coeffs.0.c0 * p.y;
     let c0c1 = coeffs.0.c1 * p.y;
@@ -84,9 +93,9 @@ pub(crate) fn ell(f: Fp12, coeffs: (Fp2, Fp2, Fp2), p: G1Affine) -> Fp12 {
     f.mul_by_014(coeffs.2, Fp2 { c0: c1c0, c1: c1c1 }, Fp2 { c0: c0c0, c1: c0c1 })
 }
 
+/// Evaluates the Miller loop.
 pub fn miller_loop(p: G1Affine, q: G2Affine) -> Fp12 {
-    // https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs#L672
-    // Got array from zkcrypto impl
+    // BLS12-381 'X' parameter transformed from binary to boolean array
     let booleans = [
         false, true, true, false, true, false, false, true, false, false, false, false, false,
         false, false, false, true, false, false, false, false, false, false, false, false, false,
@@ -135,6 +144,7 @@ pub fn miller_loop(p: G1Affine, q: G2Affine) -> Fp12 {
 }
 
 impl Fp12 {
+    /// Unconstrained final exponentiation.
     pub(crate) fn final_exponentiation(self: Self) -> Self {
         // let out = unsafe { __final_exponentiation(self) };
         let out: Fp12 = Fp12::one();
@@ -142,6 +152,7 @@ impl Fp12 {
     }
 }
 
+/// Computes the pairing.
 pub fn pairing(p: G1Affine, q: G2Affine) -> Fp12 {
     // If any of the inputs is infinity, the result is 1
     if p.infinity | q.infinity {
@@ -157,4 +168,3 @@ pub fn pairing(p: G1Affine, q: G2Affine) -> Fp12 {
         tmp
     }
 }
-

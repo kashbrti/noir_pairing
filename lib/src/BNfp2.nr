@@ -1,36 +1,53 @@
 use bignum::BigNum;
 use bignum::fields::bn254Fq::BN254_Fq_Params;
 
+/// Field Element in BN254
+///
+/// Uses `BigNum` with 3 limbs, 254 bit modulus, and BN254 parameters defined in `noir-bignum`.
 pub type Fp = BigNum<3, 254, BN254_Fq_Params>;
 
 // c0 + c1*u
 // F_p / u^2 + 1
+/// Polynomial Extension Field of Degree `2`
+///
+/// Representable as $F_p[u] / u^2 + 1$, we implement `c0 + c1 * u` such that `c0` and `c1` are
+/// elements of `Fp`.
 pub struct Fp2 {
+    /// Constant Coefficient
     pub(crate) c0: Fp,
+    /// Exponent `1` Coefficient
     pub(crate) c1: Fp,
 }
 
 impl Fp2 {
+    /// Constructs an element of `Fp2` from two field arrays.
+    ///
+    /// > TODO: Should this be parameterized by `Fp` instances instead?
     pub fn new(c0: [Field; 3], c1: [Field; 3]) -> Self {
         Fp2 { c0: BigNum { limbs: c0 }, c1: BigNum { limbs: c1 } }
     }
 
+    /// Constructs the additive unit (zero) element.
     pub fn zero() -> Fp2 {
         Fp2 { c0: BigNum::new(), c1: BigNum::new() }
     }
 
+    /// Constructs the multiplicative unit (one) element.
     pub fn one() -> Fp2 {
         Fp2 { c0: BigNum::one(), c1: BigNum::new() }
     }
 
+    /// Returns the element's additive inverse (negation).
     pub fn neg(self: Self) -> Self {
         Self { c0: self.c0.neg(), c1: self.c1.neg() }
     }
 
+    /// Returns true if both coefficients are zero.
     pub fn is_zero(self: Self) -> bool {
         (self.c0 == BigNum::new()) & (self.c1 == BigNum::new())
     }
 
+    /// Returns the square of the element.
     pub fn square(self: Self) -> Self {
         unsafe {
             // a = c0 + c1
@@ -81,7 +98,11 @@ impl Fp2 {
         }
     }
 
-    // Returns inverse and errors if there is no inverse
+    /// Returns the elements multiplicative inverse.
+    ///
+    /// ## Panics
+    ///
+    /// - if there is no multiplicative inverse for the element.
     pub fn invert(self: Self) -> Self {
         unsafe {
             // (self.c0 * self.c0 + self.c1 * self.c1).invert()
@@ -124,17 +145,22 @@ impl Fp2 {
         }
     }
 
-    // (u+9) is a quadratric residue in Fp2
-    // returns self * (u+9)
+    /// Multiplies the element by the quadratic non-residue `u` in `Fp2`.
+    ///
+    /// This is used for optimized multiplication over `Fp2`.
+    ///
+    /// `c0 + c1*u` simplifies to `(c0 - c1) + (c0 + c1)*u`
     pub fn mul_by_non_residue(self: Self) -> Self {
         // Multiply c0 + c1*u by u + 9:
         let nine = Self::new([9, 0, 0], [0, 0, 0]);
         let mult_by_nine = self.mul(nine);
-        let mult_by_u = Self { c0:  self.c1.neg(), c1: self.c0  };
+        let mult_by_u = Self { c0: self.c1.neg(), c1: self.c0 };
         mult_by_nine + mult_by_u
     }
 
-    // the constant generated according to the BN tower, ref:https://hackmd.io/@Wimet/ry7z1Xj-2#Frobenius-Operator
+    /// Multiplies the element by a non-residue of power 1
+    ///
+    /// Reference Document: https://hackmd.io/@Wimet/ry7z1Xj-2#Frobenius-Operator
     fn mul_by_non_residue_power_1(self: Self) -> Self {
         let y = Fp2::new(
             [426377461259128476197171212816344176, 950761433168210257943908058976182364, 4740],
@@ -144,6 +170,9 @@ impl Fp2 {
         self.mul(y)
     }
 
+    /// Multiplies the element by a non-residue of power 2
+    ///
+    /// Reference Document: https://hackmd.io/@Wimet/ry7z1Xj-2#Frobenius-Operator
     fn mul_by_non_residue_power_2(self: Self) -> Self {
         let y = Fp2::new(
             [730877957994261685262562863694697789, 371742299709972197061924180894761911, 12211],
@@ -153,6 +182,9 @@ impl Fp2 {
         self.mul(y)
     }
 
+    /// Multiplies the element by a non-residue of power 3
+    ///
+    /// Reference Document: https://hackmd.io/@Wimet/ry7z1Xj-2#Frobenius-Operator
     fn mul_by_non_residue_power_3(self: Self) -> Self {
         let y = Fp2::new(
             [887252555323038411621405899505013594, 1261835301057603723149303145102424539, 1596],
@@ -161,6 +193,9 @@ impl Fp2 {
         self.mul(y)
     }
 
+    /// Multiplies the element by a non-residue of power 4
+    ///
+    /// Reference Document: https://hackmd.io/@Wimet/ry7z1Xj-2#Frobenius-Operator
     fn mul_by_non_residue_power_4(self: Self) -> Self {
         let y = Fp2::new(
             [266875291493575529387049817426798434, 412105995003785042396868112665183443, 1461],
@@ -169,6 +204,9 @@ impl Fp2 {
         self.mul(y)
     }
 
+    /// Multiplies the element by a non-residue of power 5
+    ///
+    /// Reference Document: https://hackmd.io/@Wimet/ry7z1Xj-2#Frobenius-Operator
     fn mul_by_non_residue_power_5(self: Self) -> Self {
         let y = Fp2::new(
             [479103104124920441723708103336618287, 1006804826950535178307367240931996738, 387],
@@ -177,11 +215,28 @@ impl Fp2 {
         self.mul(y)
     }
 
+    /// Returns the conjugate of the element.
+    ///
+    /// Functionally, this inverts the exponent `1` coefficient, not changing the constant.
+    ///
+    /// See the `Fp2::frobenius_map` for more information.
     pub fn conjugate(self: Self) -> Self {
         Fp2 { c0: self.c0, c1: self.c1.neg() }
     }
 
-    // returns self^p
+    /// Returns the result of the frobenius endomorphism over `Fp2`
+    ///
+    /// Frobenius exponentiates the element to the prime field modulus `p` such that raising the
+    /// constant term, `c0` to the `p` returns `c0`.
+    ///
+    /// `(c0 ** p) % p == c0`
+    ///
+    /// However, raising the exponent `1` term `c1 * u` to the `p` returns `-c1 * u`.
+    ///
+    /// `(c1 ** p) % p == c1`
+    /// `(u ** p) % p == -u`
+    ///
+    /// Thus we return the result of `Fp2::conjugate`.
     pub fn frobenius_map(self: Self) -> Self {
         // (c0 + c1*u)^p = c0^p + (c1*u)^p
         // and c0^p=c0, c1^p=c1, and u^p = -u, so the result is:
@@ -383,7 +438,6 @@ fn test_mul_by_nonresidue() {
     assert(b == Fp2::new([9, 0, 0], [1, 0, 0]));
     println(d);
     assert(d == Fp2::new([8, 0, 0], [10, 0, 0]));
-
 }
 
 // #[test]

@@ -1,15 +1,18 @@
 use crate::fp2::Fp;
 use bignum::BigNum;
 
-// Ref: https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs
-
+/// BLS12-381 G1 Curve in Affine Space
 pub struct G1Affine {
+    /// Element of `Fp`
     pub x: Fp,
+    /// Element of `Fp`
     pub y: Fp,
+    /// Whether the point is the point at infinity (identity)
     pub infinity: bool,
 }
 
 impl G1Affine {
+    /// Returns the generator point in `G1`.
     pub fn generator() -> Self {
         Self {
             x: BigNum {
@@ -32,11 +35,14 @@ impl G1Affine {
         }
     }
 
+    /// Performs Y-axis negation for an element of `G1`.
     pub fn neg(self: Self) -> Self {
         let mut y = self.y.neg();
+
         if self.infinity {
             y = BigNum::one();
         }
+
         Self { x: self.x, y, infinity: self.infinity }
     }
 }

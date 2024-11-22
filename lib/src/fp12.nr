@@ -1,48 +1,62 @@
 use crate::fp2::Fp2;
 use crate::fp6::Fp6;
-use bignum::BigNum;
 
-// c0 + c1*w
-// F_{p^12} = F_{p^6} / w^2 - v
+/// Polynomial Extension Field Tower of Degree `12`.
+///
+/// Representable as $F_{p^{12}}[w] = F_{p^6}[w] / (w^2 - v)$, we implement `c0 + c1 * w` such that
+/// `c0` and `c1` are elements of `Fp6`.
 pub struct Fp12 {
-    c0: Fp6,
-    c1: Fp6,
+    /// Constant Coefficient
+    pub c0: Fp6,
+    /// Exponent `1` Coefficient
+    pub c1: Fp6,
 }
 
 impl Fp12 {
-    fn new(c0: Fp6, c1: Fp6) -> Self {
+    /// Constructs an element of `Fp12` from two elements of `Fp6`.
+    pub fn new(c0: Fp6, c1: Fp6) -> Self {
         Fp12 { c0, c1 }
     }
 
-    fn zero() -> Self {
+    /// Constructs the additive unit (zero) element.
+    pub fn zero() -> Self {
         Fp12 { c0: Fp6::zero(), c1: Fp6::zero() }
     }
 
-    fn one() -> Self {
+    /// Constructs the multiplicative unit (one) element.
+    pub fn one() -> Self {
         Fp12 { c0: Fp6::one(), c1: Fp6::zero() }
     }
 
-    fn eq(self: Self, other: Self) -> bool {
+    // > TODO: migrate to `Eq` trait
+    pub fn eq(self: Self, other: Self) -> bool {
         self.c0.eq(other.c0) & self.c1.eq(other.c1)
     }
 
-    fn add(self: Self, other: Self) -> Self {
+    // > TODO: migrate to `Add` trait
+    pub fn add(self: Self, other: Self) -> Self {
         Self { c0: self.c0.add(other.c0), c1: self.c1.add(other.c1) }
     }
 
-    fn sub(self: Self, other: Self) -> Self {
+    // > TODO: migrate to `Sub` trait
+    pub fn sub(self: Self, other: Self) -> Self {
         Self { c0: self.c0.sub(other.c0), c1: self.c1.sub(other.c1) }
     }
 
-    fn neg(self: Self) -> Self {
+    /// Returns the element's additive inverse (negation).
+    pub fn neg(self: Self) -> Self {
         Self { c0: self.c0.neg(), c1: self.c1.neg() }
     }
 
-    fn conjugate(self: Self) -> Self {
+    /// Returns the conjugate of the element.
+    ///
+    /// Functionally, this inverts the exponent `1` coefficient, not changing the constant.
+    pub fn conjugate(self: Self) -> Self {
         Self { c0: self.c0, c1: self.c1.neg() }
     }
 
-    fn square(self: Fp12) -> Fp12 {
+    /// Returns the square of the element.
+    pub fn square(self: Fp12) -> Fp12 {
         // ab = self.c0 * self.c1
         let ab = self.c0.mul(self.c1);
 
@@ -69,7 +83,8 @@ impl Fp12 {
         Fp12 { c0, c1 }
     }
 
-    fn mul(self: Fp12, other: Fp12) -> Fp12 {
+    // > TODO: migrate to `Mul` trait
+    pub fn mul(self: Fp12, other: Fp12) -> Fp12 {
         // aa = self.c0 * other.c0
         let aa = self.c0.mul(other.c0);
 
@@ -93,7 +108,12 @@ impl Fp12 {
         Fp12 { c0, c1 }
     }
 
-    fn frobenius_map(self: Self) -> Self {
+    /// Returns the result of the frobenius endomorphism over `Fp12`.
+    ///
+    /// For optimization purposes, `Fp12` being composed of `Fp6` elements compmosed of `Fp2`
+    /// elements enables a faster frobenius endomorphism over `Fp2` (see `Fp2::frobenius_map`) and
+    /// `Fp6`, finally we perform multiplication over `c1` by the constant defined below.
+    pub fn frobenius_map(self: Self) -> Self {
         let c0 = self.c0.frobenius_map();
         let mut c1 = self.c1.frobenius_map();
 
@@ -123,15 +143,24 @@ impl Fp12 {
         Fp12 { c0, c1 }
     }
 
-    // Returns inverse and errors if there is no inverse
-    fn invert(self: Self) -> Self {
+    /// Returns the elements multiplicative inverse.
+    ///
+    /// ## Panics
+    ///
+    /// - if there is no multiplicative inverse for the element.
+    pub fn invert(self: Self) -> Self {
         let mut t = (self.c0.square()).sub((self.c1.square().mul_by_nonresidue()));
         // This will error if there's no inverse
         t = t.invert();
         Fp12 { c0: self.c0.mul(t), c1: self.c1.mul(t.neg()) }
     }
 
-    fn mul_by_014(self: Self, c0: Fp2, c1: Fp2, c4: Fp2) -> Fp12 {
+    /// Performs a sparse multiplication between `Fp12` and three elements of `Fp2`.
+    ///
+    /// This is a component of `ell` in the `pairing` module.
+    ///
+    /// > TODO: migrate to Ell data type instead.
+    pub fn mul_by_014(self: Self, c0: Fp2, c1: Fp2, c4: Fp2) -> Fp12 {
         let aa = self.c0.mul_by_01(c0, c1);
         let bb = self.c1.mul_by_1(c4);
         let o = c1.add(c4);
@@ -533,7 +562,7 @@ fn test_invert() {
     assert(check.eq(Fp12::one()));
 }
 
-// #[test]
+#[test]
 fn test_frobenius_map() {
     let a = Fp12 {
         c0: Fp6 {

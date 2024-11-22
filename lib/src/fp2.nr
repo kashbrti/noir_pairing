@@ -1,39 +1,51 @@
 use bignum::BigNum;
 use bignum::fields::bls12_381Fq::BLS12_381_Fq_Params;
 
-// Parameter reference https://github.com/noir-lang/noir_bigcurve/blob/main/src/curves/bls12_381.nr#L60
+/// Field Element in BLS12-381
+///
+/// Uses `BigNum` with 4 limbs, 381 bit modulus, and BLS12-381 parameters defined in `noir-bignum`.
 pub type Fp = BigNum<4, 381, BLS12_381_Fq_Params>;
 
-// Code reference https://github.com/zkcrypto/bls12_381/blob/main/src/fp2.rs
-
-// c0 + c1*u
-// F_p / u^2 + 1
+/// Polyomial Extension Field of Degree `2`
+///
+/// Representable as $F_p[u] / u^2 + 1$, we implement `c0 + c1 * u` such that `c0` and `c1` are
+/// elements of `Fp`.
 pub struct Fp2 {
-    pub(crate) c0: Fp,
-    pub(crate) c1: Fp,
+    /// Constant Coefficient
+    pub c0: Fp,
+    /// Exponent `1` Coefficient
+    pub c1: Fp,
 }
 
 impl Fp2 {
+    /// Constructs an element of `Fp2` from two field arrays.
+    ///
+    /// > TODO: Should this be parameterized by `Fp` instances instead?
     pub fn new(c0: [Field; 4], c1: [Field; 4]) -> Self {
         Fp2 { c0: BigNum { limbs: c0 }, c1: BigNum { limbs: c1 } }
     }
 
+    /// Constructs the additive unit (zero) element.
     pub fn zero() -> Fp2 {
         Fp2 { c0: BigNum::new(), c1: BigNum::new() }
     }
 
+    /// Constructs the multiplicative unit (one) element.
     pub fn one() -> Fp2 {
         Fp2 { c0: BigNum::one(), c1: BigNum::new() }
     }
 
+    /// Returns the element's additive inverse (negation).
     pub fn neg(self: Self) -> Self {
         Self { c0: self.c0.neg(), c1: self.c1.neg() }
     }
 
+    /// Returns true if both coefficients are zero.
     pub fn is_zero(self: Self) -> bool {
         (self.c0 == BigNum::new()) & (self.c1 == BigNum::new())
     }
 
+    /// Returns the square of the element.
     pub fn square(self: Self) -> Self {
         unsafe {
             // a = c0 + c1
@@ -84,7 +96,11 @@ impl Fp2 {
         }
     }
 
-    // Returns inverse and errors if there is no inverse
+    /// Returns the elements multiplicative inverse.
+    ///
+    /// ## Panics
+    ///
+    /// - if there is no multiplicative inverse for the element.
     pub fn invert(self: Self) -> Self {
         unsafe {
             // (self.c0 * self.c0 + self.c1 * self.c1).invert()
@@ -127,23 +143,37 @@ impl Fp2 {
         }
     }
 
-    // (u+1) is a quadratric residue in Fp2
-    // returns self * (u+1)
+    /// Multiplies the element by the quadratic non-residue `u` in `Fp2`.
+    ///
+    /// This is used for optimized multiplication over `Fp2`.
+    ///
+    /// `c0 + c1*u` simplifies to `(c0 - c1) + (c0 + c1)*u`
     pub fn mul_by_nonresidue(self: Self) -> Self {
-        // Multiply c0 + c1*u by u + 1:
-        // (c0 + c1*u)(u + 1)
-        // = c0 * u + c0 + c1 * u^2 + c1 * u
-        // and because u^2 = -1, we get
-        // = c0 * u + c0 - c1 + c1 * u
-        // (c0 - c1) + (c0 + c1)u
         Self { c0: self.c0 - self.c1, c1: self.c0 + self.c1 }
     }
 
+    /// Returns the conjugate of the element.
+    ///
+    /// Functionally, this inverts the exponent `1` coefficient, not changing the constant.
+    ///
+    /// See the `Fp2::frobenius_map` for more information.
     pub fn conjugate(self: Self) -> Self {
         Fp2 { c0: self.c0, c1: self.c1.neg() }
     }
 
-    // returns self^p
+    /// Returns the result of the frobenius endomorphism over `Fp2`
+    ///
+    /// Frobenius exponentiates the element to the prime field modulus `p` such that raising the
+    /// constant term, `c0` to the `p` returns `c0`.
+    ///
+    /// `(c0 ** p) % p == c0`
+    ///
+    /// However, raising the exponent `1` term `c1 * u` to the `p` returns `-c1 * u`.
+    ///
+    /// `(c1 ** p) % p == c1`
+    /// `(u ** p) % p == -u`
+    ///
+    /// Thus we return the result of `Fp2::conjugate`.
     pub fn frobenius_map(self: Self) -> Self {
         // (c0 + c1*u)^p = c0^p + (c1*u)^p
         // and c0^p=c0, c1^p=c1, and u^p = -u, so the result is:

@@ -1,51 +1,65 @@
 use crate::fp2::Fp2;
 use bignum::BigNum;
 
-// https://github.com/zkcrypto/bls12_381/blob/main/src/fp6.rs
-
-// c0 + c1*v + c2*v^2
-// F_{p^6} =  F_{p^2} / v^3 - u - 1
+/// Polynomial Extension Field Tower of Degree `6`
+///
+/// Representable as $F_{p^6}[v] =  F_{p^2} / v^3 - u - 1$, we implement
+/// `c0 + c1 * v + (c2 * v) ** 2` such that `c0`, `c1`, and `c2` are elements of `Fp2`.
 pub struct Fp6 {
-    c0: Fp2,
-    c1: Fp2,
-    c2: Fp2,
+    /// Constant Coefficient
+    pub(crate) c0: Fp2,
+    /// Exponent `1` Coefficient
+    pub(crate) c1: Fp2,
+    /// Exponent `2` Coefficient
+    pub(crate) c2: Fp2,
 }
 
-// TODO (if possible) make underlying (Fp2) function unconstrained and then constrain for better performance
-
 impl Fp6 {
-    fn new(c0: Fp2, c1: Fp2, c2: Fp2) -> Self {
+    /// Constructs an element of `Fp6` from three elements of `Fp2`.
+    pub fn new(c0: Fp2, c1: Fp2, c2: Fp2) -> Self {
         Fp6 { c0, c1, c2 }
     }
 
-    fn zero() -> Self {
+    /// Constructs the additive unit (zero) element.
+    pub fn zero() -> Self {
         Fp6 { c0: Fp2::zero(), c1: Fp2::zero(), c2: Fp2::zero() }
     }
 
-    fn one() -> Self {
+    /// Constructs the multiplicative unit (one) element.
+    pub fn one() -> Self {
         Fp6 { c0: Fp2::one(), c1: Fp2::zero(), c2: Fp2::zero() }
     }
 
-    fn eq(self: Self, other: Self) -> bool {
+    // > TODO: migrate to `Eq` trait
+    pub fn eq(self: Self, other: Self) -> bool {
         self.c0.eq(other.c0) & self.c1.eq(other.c1) & self.c2.eq(other.c2)
     }
 
-    fn add(self: Self, other: Self) -> Self {
+    // > TODO: migrate to `Add` trait
+    pub fn add(self: Self, other: Self) -> Self {
         Self { c0: self.c0.add(other.c0), c1: self.c1.add(other.c1), c2: self.c2.add(other.c2) }
     }
 
-    fn sub(self: Self, other: Self) -> Self {
+    // > TODO: migrate to `Sub` trait
+    pub fn sub(self: Self, other: Self) -> Self {
         Self { c0: self.c0.sub(other.c0), c1: self.c1.sub(other.c1), c2: self.c2.sub(other.c2) }
     }
 
-    fn neg(self: Self) -> Self {
+    /// Returns the element's additive inverse (negation).
+    pub fn neg(self: Self) -> Self {
         Self { c0: self.c0.neg(), c1: self.c1.neg(), c2: self.c2.neg() }
     }
 
+    /// Multiply `Fp6` coefficients by an element in `Fp2`
+    ///
+    /// This is a component of sparse multiplication in `Fp12::mul_by_014`
     pub fn mul_by_1(self: Self, c1: Fp2) -> Fp6 {
         Fp6 { c0: (self.c2.mul(c1)).mul_by_nonresidue(), c1: self.c0.mul(c1), c2: self.c1.mul(c1) }
     }
 
+    /// Multiply `Fp6` coefficients by two elements in `Fp2`
+    ///
+    /// This is a component of sparse multiplication in `Fp12::mul_by_014`
     pub fn mul_by_01(self: Self, c0: Fp2, c1: Fp2) -> Fp6 {
         let a_a = self.c0.mul(c0);
         let b_b = self.c1.mul(c1);
@@ -59,18 +73,12 @@ impl Fp6 {
         Fp6 { c0: t1, c1: t2, c2: t3 }
     }
 
-    // v is a quadratic residue in Fp6
-    // returns self * v
-    fn mul_by_nonresidue(self: Self) -> Self {
-        // Multiply c0 + c1 * v + c2 * v^2 by v
-        // (c0 + c1 * v + c2 * v^2) * v
-        // = c0 * v + c1 * v^2 + c2 * v^3
-        // And v^3 equals (u + 1):
-        // = c0 * v + c1 * v^2 + c2 * (u + 1)
-        // = c0 * v + c1 * v^2 + c2 * u + c2
-        // rewrite according to the coefficients
-        // = (c2 * u + c2) + (c0 * v) + (c1 * v^2)
-        // = (c2 * (u + 1)) + (c0 * v) + (c1 * v^2)
+    /// Multiply an element by the sextic non-residue `v` in `Fp6`.
+    ///
+    /// This is used for optimized multiplication over `Fp6`.
+    ///
+    /// `(c0 + c1 * v + c2 * v^2) * v` simplifies to `(c2 * (u+1)) + c0*v + c1*(v**2)`.
+    pub fn mul_by_nonresidue(self: Self) -> Self {
         Fp6 {
             c0: self.c2.mul_by_nonresidue(), // c2 * (u + 1)
             c1: self.c0, // c0
@@ -78,7 +86,12 @@ impl Fp6 {
         }
     }
 
-    fn frobenius_map(self: Self) -> Self {
+    /// Returns the result of the frobenius endomorphism over `Fp6`.
+    ///
+    /// For optimization purposes, `Fp6` being composed of `Fp2` elements enables a faster frobenius
+    /// endomorphism over `Fp2` (see `Fp2::frobenius_map`), finally we perform multiplication over
+    /// `c1` and `c2` by constants defined below.
+    pub fn frobenius_map(self: Self) -> Self {
         let c0 = self.c0.frobenius_map();
         let mut c1 = self.c1.frobenius_map();
         let mut c2 = self.c2.frobenius_map();
@@ -112,11 +125,10 @@ impl Fp6 {
         Fp6 { c0, c1, c2 }
     }
 
-    // https://github.com/zkcrypto/bls12_381/blob/main/src/fp6.rs#L200
-    // https://eprint.iacr.org/2022/367
-    // for inputs `a = (a0, a1, a2)` and `b = (b0, b1, b2)`,
-    // return multiplication a*b
-    fn mul_interleaved(a: Self, b: Self) -> Self {
+    /// Performs multiplication of two `Fp6` elements using the full-tower interleaving strategy
+    ///
+    /// Reference Document: https://eprint.iacr.org/2022/367 (Algorithm 5)
+    pub fn mul_interleaved(a: Self, b: Self) -> Self {
         unsafe {
             // Unconstrained calculations first
             //   result_c0_0 = a00 * b00 - a01 * b01 + a10 * b20 - a11 * b21 + a20 * b10 - a21 * b11
@@ -346,10 +358,12 @@ impl Fp6 {
         }
     }
 
-    fn mul(self: Self, other: Self) -> Self {
+    // > TODO: Migrate to `Mul` trait
+    pub fn mul(self: Self, other: Self) -> Self {
         self.mul_interleaved(other)
     }
 
+    /// Returns the square of the element.
     pub fn square(self: Self) -> Self {
         // s0 = self.c0^2
         let s0 = self.c0.square();
@@ -380,8 +394,12 @@ impl Fp6 {
         }
     }
 
-    // Returns inverse and errors if there is no inverse
-    fn invert(self: Self) -> Self {
+    /// Returns the elements multiplicative inverse.
+    ///
+    /// ## Panics
+    ///
+    /// - if there is no multiplicative inverse for the element.
+    pub fn invert(self: Self) -> Self {
         unsafe {
             let mut c0 = self.c1.mul(self.c2).mul_by_nonresidue();
             c0 = self.c0.square().sub(c0);
