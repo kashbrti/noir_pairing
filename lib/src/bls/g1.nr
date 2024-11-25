@@ -1,4 +1,4 @@
-use crate::fp2::Fp;
+use crate::bls::fp2::Fp;
 use bignum::BigNum;
 
 /// BLS12-381 G1 Curve in Affine Space

@@ -1,7 +1,7 @@
-use crate::fp12::Fp12;
-use crate::fp2::Fp2;
-use crate::g1::G1Affine;
-use crate::g2::{G2Affine, G2Projective};
+use crate::bls::fp12::Fp12;
+use crate::bls::fp2::Fp2;
+use crate::bls::g1::G1Affine;
+use crate::bls::g2::{G2Affine, G2Projective};
 use crate::helpers::__final_exponentiation;
 
 /// Performs the doubling step of the Miller Algorithm and evaluates the line function.

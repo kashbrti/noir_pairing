@@ -1,4 +1,4 @@
-use crate::fp2::Fp2;
+use crate::bls::fp2::Fp2;
 
 /// BLS12-381 G2 Curve in Affine Space
 pub struct G2Affine {

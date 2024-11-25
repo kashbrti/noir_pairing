@@ -1,10 +1,10 @@
 use crate::BNfp12::Fp12;
 use crate::BNfp2::Fp2;
 use crate::BNfp6::Fp6;
-use crate::EXP_mod::EXP_mod_Params;
+use crate::EXP_mod::ExpModParams;
 use crate::g1::G1Affine;
 use crate::g2::{G2Affine, G2Projective};
-use crate::Mod_p12m1_Params::MOD_p12m1_Params;
+use crate::mod_p12m1::ModP12M1Params;
 use bignum::BigNum;
 use bignum::fields::bn254Fq::BN254_Fq_Params;
 use bignum::fns::unconstrained_ops::__pow;
@@ -16,7 +16,7 @@ use bignum::fns::unconstrained_ops::__pow;
 // we need to compute the value of lambda = \sum_i a_i p^i such that a_i is smooth
 pub type Fp = BigNum<3, 254, BN254_Fq_Params>;
 // the type of integers modulo p^12-1 /r
-pub type Mod_h = BigNum<24, 2790, EXP_mod_Params>;
+pub type Mod_h = BigNum<24, 2790, ExpModParams>;
 // the type of integers modulo p^12 -1
 pub type Mod_p12m1 = BigNum<26, 3044, MOD_p12m1_Params>;
 

@@ -3,21 +3,21 @@ use bignum::params::BigNumParamsGetter;
 use bignum::utils::u60_representation::U60Repr;
 
 /// BigNum Parameters for integer arithmetic modulo $p^12 - 1 / r$
-pub struct EXP_mod_Params {}
+pub struct ExpModParams {}
 
-// impl RuntimeBigNumParamsTrait<24> for EXP_mod_Params {
+// impl RuntimeBigNumParamsTrait<24> for ExpModParams {
 //     fn modulus_bits() -> u32 {
 //         2790
 //     }
 // }
 
-impl BigNumParamsGetter<24, 2790> for EXP_mod_Params {
+impl BigNumParamsGetter<24, 2790> for ExpModParams {
     fn get_params() -> BigNumParams<24, 2790> {
-        EXP_mod_PARAMS
+        EXP_MOD_PARAMS
     }
 }
 
-pub global EXP_mod_PARAMS: BigNumParams<24, 2790> = BigNumParams {
+pub global EXP_MOD_PARAMS: BigNumParams<24, 2790> = BigNumParams {
     has_multiplicative_inverse: true,
     modulus: [
         0xa4efb7e54523a486964b64ca86f120,
