@@ -123,25 +123,104 @@ impl Fp12 {
     /// $q = 36x^4 + 36x^3 + 24x^2 + 6x + 1$
     ///
     /// $\lambda = 6x + 2 + q - q^2 + q^3$
+    ///
+    /// > Note: Using a loop over the bits of $\lambda$ does not automatically unroll itself, so we
+    /// > manually unroll the loop, performing `exp*=a; a*=a` on `1` bits and `a*=a` on `0` bits.
     pub fn exp_lambda(self) -> Self {
-        // TODO: write comptime function `Fp -> [bool; N]`
-        let exp_bits_as_bools = [
-            true, false, false, false, true, true, true, true, true, false, false, true, false,
-            false, false, false, true, false, false, true, false, true, true, false, false, true,
-            false, true, false, false, true, false, false, false, true, false, true, true, false,
-            true, false, true, false, false, true, false, false, true, true, false, false, true,
-            false, true, true, true, false, false, true, false, false, false, true,
-        ];
-
         let mut a = self;
         let mut exp = Fp12::one();
 
-        for bit in exp_bits_as_bools {
-            if bit {
-                exp *= a;
-            }
-            a *= a;
-        }
+        exp *= a;
+        a *= a;
+        a *= a;
+        a *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        a *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        a *= a;
+        a *= a;
+        a *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        a *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        a *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        a *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        a *= a;
+        a *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        a *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        a *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        a *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        a *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
+        a *= a;
+        a *= a;
+        a *= a;
+        exp *= a;
+        a *= a;
 
         let first_frobenius = self.frobenius_map();
         let second_frobenius = first_frobenius.frobenius_map();
