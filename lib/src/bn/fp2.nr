@@ -47,6 +47,16 @@ impl Fp2 {
         (self.c0 == BigNum::new()) & (self.c1 == BigNum::new())
     }
 
+
+    // Returns the double of the element
+    pub fn double(self: Self) -> Self {
+        let c0 = self.c0; 
+        let c1 = self.c1;
+        let res_c0 = c0 + c0;
+        let res_c1 = c1 + c1;
+        Self { c0: res_c0, c1: res_c1 }
+    }
+
     /// Returns the square of the element.
     pub fn square(self: Self) -> Self {
         unsafe {
@@ -152,8 +162,7 @@ impl Fp2 {
     /// `c0 + c1*u` simplifies to `(c0 - c1) + (c0 + c1)*u`
     pub fn mul_by_non_residue(self: Self) -> Self {
         // Multiply c0 + c1*u by u + 9:
-        let nine = Self::new([9, 0, 0], [0, 0, 0]);
-        let mult_by_nine = self.mul(nine);
+        let mult_by_nine = self.double().double().double().add(self); 
         let mult_by_u = Self { c0: self.c1.neg(), c1: self.c0 };
         mult_by_nine + mult_by_u
     }

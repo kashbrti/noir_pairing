@@ -310,18 +310,43 @@ impl Fp6 {
     /// Returns the square of the element.
     pub fn square(self: Self) -> Self {
         // s0 = self.c0^2
-        let a_0 = self.c0;
-        let a_1 = self.c1;
-        let a_2 = self.c2;
+        let a_a = self.c0.mul(self.c0);
+        let b_b = self.c1.mul(self.c1);
+        let c_c = self.c2.mul(self.c2);
 
-        let c_3 = (a_1 * a_2 + a_2 * a_1).mul_by_non_residue();
-        let c_4 = (a_2 * a_2).mul_by_non_residue();
+        // Construct t1
+        let t1 = self.c1;
+        let t1 = t1.add(self.c2);
 
-        let c_0 = a_0 * a_0 + c_3;
-        let c_1 = a_0 * a_1 + a_1 * a_0 + c_4;
-        let c_2 = a_0 * a_2 + a_1 * a_1 + a_2 * a_0 + c_3;
+        let tmp = self.c1.add(self.c2);
+        let t1 = t1.mul(tmp);
+        let t1 = t1.sub(b_b);
+        let t1 = t1.sub(c_c);
+        let t1 = t1.mul_by_non_residue();
+        let t1 = t1.add(a_a);
 
-        Self { c0: c_0, c1: c_1, c2: c_2 }
+        // Construct t3
+        let t3 = self.c0;
+        let t3 = t3.add(self.c2);
+
+        let tmp = self.c0.add(self.c2);
+        let t3 = t3.mul(tmp);
+        let t3 = t3.sub(a_a);
+        let t3 = t3.add(b_b);
+        let t3 = t3.sub(c_c);
+
+        // Construct t2
+        let t2 = self.c0;
+        let t2 = t2.add(self.c1);
+
+        let tmp = self.c0.add(self.c1);
+        let t2 = t2.mul(tmp);
+        let t2 = t2.sub(a_a);
+        let t2 = t2.sub(b_b);
+        let c_c_mul_by_nonres = c_c.mul_by_non_residue();
+        let t2 = t2.add(c_c_mul_by_nonres);
+
+        Self { c0: t1, c1: t2, c2: t3 }
     }
 
     /// Returns the elements multiplicative inverse.

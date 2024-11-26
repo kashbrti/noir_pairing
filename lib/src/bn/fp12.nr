@@ -702,6 +702,7 @@ impl std::cmp::Eq for Fp12 {
 //     assert(check.eq(Fp12::one()));
 // }
 
+
 #[test]
 fn test_one() {
     let a = Fp12 {
