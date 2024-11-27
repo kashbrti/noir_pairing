@@ -7,7 +7,7 @@ use crate::bls::pairing::{addition_step, doubling_step, miller_loop, pairing};
 
 use dep::bignum::BigNum;
 
-// #[test]
+#[test]
 fn test_doubling_step() {
     let generator = G2Projective {
         x: Fp2::new(
@@ -130,20 +130,20 @@ fn test_doubling_step() {
 
     // Result are 3 Fp2's and the adjusted projective point
     // (in Rust this is changed in place, but this is not supported in Noir so it is an additional return value)
-    let res = doubling_step(generator);
+    let (ell, point) = doubling_step(generator);
 
     // Check changed point
-    assert(res.3.x.eq(doubled.x));
-    assert(res.3.y.eq(doubled.y));
-    assert(res.3.z.eq(doubled.z));
+    assert(point.x.eq(doubled.x));
+    assert(point.y.eq(doubled.y));
+    assert(point.z.eq(doubled.z));
 
     // Check Fp2's
-    assert(res.0.eq(a));
-    assert(res.1.eq(b));
-    assert(res.2.eq(c));
+    assert(ell.c1_c1.eq(a));
+    assert(ell.c1_c0.eq(b));
+    assert(ell.c0_c0.eq(c));
 }
 
-// #[test]
+#[test]
 fn test_addition_step() {
     /*
   Values from zkcrypto impl
@@ -326,17 +326,17 @@ fn test_addition_step() {
 
     // Result are 3 Fp2's and the adjusted projective point
     // (in Rust this is changed in place, but this is not supported in Noir so it is an additional return value)
-    let res: (Fp2, Fp2, Fp2, G2Projective) = addition_step(point1, affine);
+    let (ell, point) = addition_step(point1, affine);
 
     // Check changed point
-    assert(res.3.x.eq(addition_res_expected.x));
-    assert(res.3.y.eq(addition_res_expected.y));
-    assert(res.3.z.eq(addition_res_expected.z));
+    assert(point.x.eq(addition_res_expected.x));
+    assert(point.y.eq(addition_res_expected.y));
+    assert(point.z.eq(addition_res_expected.z));
 
     // Check Fp2's
-    assert(res.0.eq(a));
-    assert(res.1.eq(b));
-    assert(res.2.eq(c));
+    assert(ell.c1_c1.eq(a));
+    assert(ell.c1_c0.eq(b));
+    assert(ell.c0_c0.eq(c));
 }
 
 // #[test]
