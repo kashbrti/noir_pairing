@@ -155,6 +155,12 @@ impl Fp2 {
         }
     }
 
+    /// Scales the element by an element of Fp.
+    pub fn scale(self, scalar: Fp) -> Self {
+        Self { c0: self.c0 * scalar, c1: self.c1 * scalar }
+    }
+
+
     /// Multiplies the element by the quadratic non-residue `u` in `Fp2`.
     ///
     /// This is used for optimized multiplication over `Fp2`.

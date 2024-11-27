@@ -5,3 +5,4 @@ pub mod fp12;
 pub mod g1;
 pub mod g2;
 pub mod mod_p12m1;
+pub mod pairing;
