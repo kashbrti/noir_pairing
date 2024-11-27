@@ -4,10 +4,57 @@ use crate::bls::g1::G1Affine;
 use crate::bls::g2::{G2Affine, G2Projective};
 use crate::helpers::__final_exponentiation;
 
+/// Encapsulates sparse non-zero coefficients in Fp12.
+///
+/// There are multiple operations over elements of Fp12 where the majority of coefficients are zero,
+/// which results in unnecessary operations.
+///
+/// We define a data structure representing a more succinct form of the following.
+///
+/// ```
+/// Fp12 {
+///     c0: Fp6 {
+///        c0: Fp2 { .. },
+///        c1: Fp2::zero(),
+///        c2: Fp2::zero(),
+///     },
+///     c1: Fp6 {
+///        c0: Fp2 { .. },
+///        c1: Fp2 { .. },
+///        c2: Fp2::zero(),
+///     },
+/// }
+/// ```
+///
+/// In particular, we define this for the point doubling/addition and line evaluation algorithms.
+///
+/// Reference Document: https://eprint.iacr.org/2010/354.pdf (Algorithm 26, 27).
+pub(crate) struct Ell {
+    pub(crate) c0_c0: Fp2,
+    pub(crate) c1_c0: Fp2,
+    pub(crate) c1_c1: Fp2,
+}
+
+impl Ell {
+    /// Constructs an Ell instance with coefficients in Fp2.
+    pub(crate) fn new(c0_c0: Fp2, c1_c0: Fp2, c1_c1: Fp2) -> Self {
+        Self { c0_c0, c1_c0, c1_c1 }
+    }
+
+    /// Scales the coefficients of an Ell instance by an affine point.
+    pub(crate) fn scale_by_affine(self, p: G1Affine) -> Self {
+        Self {
+            c0_c0: self.c0_c0,
+            c1_c0: self.c1_c0.scale(p.x),
+            c1_c1: self.c1_c1.scale(p.y),
+        }
+    }
+}
+
 /// Performs the doubling step of the Miller Algorithm and evaluates the line function.
 ///
 /// Reference Document: https://eprint.iacr.org/2010/354.pdf (Algorithm 26)
-pub(crate) fn doubling_step(r: G2Projective) -> (Fp2, Fp2, Fp2, G2Projective) {
+pub(crate) fn doubling_step(r: G2Projective) -> (Ell, G2Projective) {
     let mut tmp0 = r.x.square();
     let mut tmp1 = r.y.square();
     let mut tmp2 = tmp1.square();
@@ -34,13 +81,13 @@ pub(crate) fn doubling_step(r: G2Projective) -> (Fp2, Fp2, Fp2, G2Projective) {
     tmp0 = new_r_z.mul(zsquared);
     tmp0 = tmp0.add(tmp0);
 
-    (tmp0, tmp3, tmp6, G2Projective { x: new_r_x, y: new_r_y, z: new_r_z })
+    (Ell::new(tmp6, tmp3, tmp0), G2Projective { x: new_r_x, y: new_r_y, z: new_r_z })
 }
 
 /// Performs the addition step of the Miller Algorithm and evaluates the line function.
 ///
 /// Reference Document: https://eprint.iacr.org/2010/354.pdf (Algorithm 26)
-pub(crate) fn addition_step(r: G2Projective, q: G2Affine) -> (Fp2, Fp2, Fp2, G2Projective) {
+pub(crate) fn addition_step(r: G2Projective, q: G2Affine) -> (Ell, G2Projective) {
     let zsquared = r.z.square();
     let ysquared = q.y.square();
     let mut t0 = zsquared.mul(q.x);
@@ -73,24 +120,7 @@ pub(crate) fn addition_step(r: G2Projective, q: G2Affine) -> (Fp2, Fp2, Fp2, G2P
     let t10_double = new_r_z.add(new_r_z);
     let t6_neg = t6.neg();
     let t1_final = t6_neg.add(t6_neg);
-    (t10_double, t1_final, t9, G2Projective { x: new_r_x, y: new_r_y, z: new_r_z })
-}
-
-/// Performse sparse multiplication between `Fp12` and a triple of elements in `Fp2`.
-///
-/// The elements of `Fp2` represent non-zero coefficients in an element of `Fp12`. As algorithms
-/// 26 and 27 in the reference document below evaluate the line function internally, and as most
-/// of the evaluated coefficients are always zero, we represent this sparsely.
-///
-/// > TODO: migrate to Ell data type instead.
-pub(crate) fn ell(f: Fp12, coeffs: (Fp2, Fp2, Fp2), p: G1Affine) -> Fp12 {
-    let c0c0 = coeffs.0.c0 * p.y;
-    let c0c1 = coeffs.0.c1 * p.y;
-
-    let c1c0 = coeffs.1.c0 * p.x;
-    let c1c1 = coeffs.1.c1 * p.x;
-
-    f.mul_by_014(coeffs.2, Fp2 { c0: c1c0, c1: c1c1 }, Fp2 { c0: c0c0, c1: c0c1 })
+    (Ell::new(t9, t1_final, t10_double), G2Projective { x: new_r_x, y: new_r_y, z: new_r_z })
 }
 
 /// Evaluates the Miller loop.
@@ -116,27 +146,29 @@ pub fn miller_loop(p: G1Affine, q: G2Affine) -> Fp12 {
             found_one = i_bool;
         } else {
             // Doubling step receives f. Does 2 things: doubling_step function & ell function
-            let (coeffs_c0, coeffs_c1, coeffs_c2, cur_updated) = doubling_step(adder_cur);
+            let (ell_coeffs, cur_updated) = doubling_step(adder_cur);
+
             adder_cur = cur_updated;
-            // ell updates f
-            f = ell(f, (coeffs_c0, coeffs_c1, coeffs_c2), adder_p);
+
+            // updates f
+            f = f.sparse_mul(ell_coeffs.scale_by_affine(adder_p));
 
             if i_bool {
                 // addition_step receives f & does 2 things: addition_step & ell function
-                let (coeffs_c0, coeffs_c1, coeffs_c2, cur_updated) =
-                    addition_step(adder_cur, adder_base);
+                let (ell_coeffs, cur_updated) = addition_step(adder_cur, adder_base);
+
                 adder_cur = cur_updated;
                 // ell updates f
-                f = ell(f, (coeffs_c0, coeffs_c1, coeffs_c2), adder_p);
+                f = f.sparse_mul(ell_coeffs.scale_by_affine(adder_p));
             }
             f = f.square();
         }
     }
     // Doubling step receives f. Does 2 things: doubling_step function & ell function
-    let (coeffs_c0, coeffs_c1, coeffs_c2, cur_updated) = doubling_step(adder_cur);
+    let (ell_coeffs, cur_updated) = doubling_step(adder_cur);
     adder_cur = cur_updated;
     // ell updates f
-    f = ell(f, (coeffs_c0, coeffs_c1, coeffs_c2), adder_p);
+    f = f.sparse_mul(ell_coeffs.scale_by_affine(adder_p));
 
     f = f.conjugate();
     println(f);
