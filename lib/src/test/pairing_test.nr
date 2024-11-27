@@ -1,9 +1,9 @@
-use crate::fp12::Fp12;
-use crate::fp2::Fp2;
-use crate::fp6::Fp6;
-use crate::g1::G1Affine;
-use crate::g2::{G2Affine, G2Projective};
-use crate::pairing::{addition_step, doubling_step, miller_loop, pairing};
+use crate::bls::fp12::Fp12;
+use crate::bls::fp2::Fp2;
+use crate::bls::fp6::Fp6;
+use crate::bls::g1::G1Affine;
+use crate::bls::g2::{G2Affine, G2Projective};
+use crate::bls::pairing::{addition_step, doubling_step, miller_loop, pairing};
 
 use dep::bignum::BigNum;
 

@@ -1,6 +1,6 @@
-use crate::BNfp12::Fp12;
-use crate::BNfp2::Fp2;
-use crate::BNfp6::Fp6;
+use crate::bn::fp12::Fp12;
+use crate::bn::fp2::Fp2;
+use crate::bn::fp6::Fp6;
 use crate::EXP_mod::ExpModParams;
 use crate::g1::G1Affine;
 use crate::g2::{G2Affine, G2Projective};
