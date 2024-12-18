@@ -1,6 +1,7 @@
 use crate::bn::fp2::Fp;
 use crate::bn::fp2::Fp2;
-use bignum::BigNum;
+use bignum::{BigNum, fields::bn254Fq::BN254_Fq_Params};
+use super::fp12::Fp12;
 
 /// Polynomial Extension Field Tower of Degree `6`
 ///
@@ -80,87 +81,151 @@ impl Fp6 {
     fn mul_interleaved(a: Self, b: Self) -> Self {
         unsafe {
             // Unconstrained calculations first
-            //   result_c0_0 = a00 * b00 - a01 * b01 + a10 * b20 - a11 * b21 + a20 * b10 - a21 * b11
-            //                                        - a10 * b21 - a11 * b20 - a20 * b11 - a21 * b10.
-            //               = a00 * b00 - a01 * b01 + a10 * (b20 - b21) - a11 * (b20 + b21)
-            //                                        + a20 * (b10 - b11) - a21 * (b10 + b11).
+            //   result_c0_0 = a00*b00 - a01*b01 + 9*a10*b20 - a10*b21 - a11*b20 -9 *a11*b21 + 9*a20*b10 - a20*b11 - a21*b10 -9*a21*b11
             let a00b00 = a.c0.c0.__mul(b.c0.c0);
+            let mut result_c0_0 = a00b00;
             let a01b01 = a.c0.c1.__mul(b.c0.c1);
-            let b20_sub_b21 = b.c2.c0.__sub(b.c2.c1);
-            let a10b20_sub_b21 = a.c1.c0.__mul(b20_sub_b21);
-            let b20_add_b21 = b.c2.c0.__add(b.c2.c1);
-            let a11b20_add_b21 = a.c1.c1.__mul(b20_add_b21);
-            let b10_sub_b11 = b.c1.c0.__sub(b.c1.c1);
-            let a20b10_sub_b11 = a.c2.c0.__mul(b10_sub_b11);
-            let b10_add_b11 = b.c1.c0.__add(b.c1.c1);
-            let a21b10_add_b11 = a.c2.c1.__mul(b10_add_b11);
+            result_c0_0 = result_c0_0.__sub(a01b01); 
+            
+            let nine = Fp {limbs:[9,0,0]};
+            let nineb20 = b.c2.c0.__mul(nine);
+            let a109b20 = a.c1.c0.__mul(nineb20); 
+            result_c0_0 = result_c0_0.__add(a109b20); 
+            
+            let a10b21 = a.c1.c0.__mul(b.c2.c1); 
+            result_c0_0 = result_c0_0.__sub(a10b21); 
 
-            let mut result_c0_0 = a00b00.__sub(a01b01);
-            result_c0_0 = result_c0_0.__add(a10b20_sub_b21);
-            result_c0_0 = result_c0_0.__sub(a11b20_add_b21);
-            result_c0_0 = result_c0_0.__add(a20b10_sub_b11);
-            result_c0_0 = result_c0_0.__sub(a21b10_add_b11);
+            let a11b20 = a.c1.c1.__mul(b.c2.c0) ; 
+            result_c0_0 = result_c0_0.__sub(a11b20); 
 
-            //   result_c0_1 = a00 * b01 + a01 * b00 + a10 * b21 + a11 * b20 + a20 * b11 + a21 * b10
-            //                                        + a10 * b20 - a11 * b21 + a20 * b10 - a21 * b11.
-            //               = a00 * b01 + a01 * b00 + a10 * (b20 + b21) + a11 * (b20 - b21)
-            //                                        + a20 * (b10 + b11) + a21 * (b10 - b11).
+            let a119b21 = a.c1.c1.__mul(b.c2.c1.__mul(nine)); 
+            result_c0_0 = result_c0_0.__sub(a119b21); 
+
+            let a209b10 = a.c2.c0.__mul(b.c1.c0.__mul(nine));
+            result_c0_0 = result_c0_0.__add(a209b10); 
+
+            let a20b11 = a.c2.c0.__mul(b.c1.c1);
+            result_c0_0 = result_c0_0.__sub(a20b11); 
+
+            let a21b10 = a.c2.c1.__mul(b.c1.c0);
+            result_c0_0 = result_c0_0.__sub(a21b10);
+
+            let a219b11 = a.c2.c1.__mul(b.c1.c1.__mul(nine));
+            result_c0_0 = result_c0_0.__sub(a219b11);
+            
+
+            // result_c0_1 = 
+            //   a00*b01      // term 1
+            //   + a01*b00    // term 2 
+            //   + a10*b20    // term 3
+            //   + 9*a10*b21  // term 4
+            //   + 9*a11*b20  // term 5
+            //   - a11*b21    // term 6
+            //   + a20*b10    // term 7
+            //   + 9*a20*b11  // term 8
+            //   + 9*a21*b10  // term 9
+            //   - a21*b11    // term 10
+
+            //   a00*b01      // term 1
             let a00b01 = a.c0.c0.__mul(b.c0.c1);
+            let mut result_c0_1 = a00b01; 
+            //   + a01*b00    // term 2 
             let a01b00 = a.c0.c1.__mul(b.c0.c0);
-            let b20_add_b21 = b.c2.c0.__add(b.c2.c1);
-            let a10b20_add_b21 = a.c1.c0.__mul(b20_add_b21);
-            let b20_sub_b21 = b.c2.c0.__sub(b.c2.c1);
-            let a11b20_sub_b21 = a.c1.c1.__mul(b20_sub_b21);
-            let b10_add_b11 = b.c1.c0.__add(b.c1.c1);
-            let a20b10_add_b11 = a.c2.c0.__mul(b10_add_b11);
-            let b10_sub_b11 = b.c1.c0.__sub(b.c1.c1);
-            let a21b10_sub_b11 = a.c2.c1.__mul(b10_sub_b11);
+            result_c0_1 = result_c0_1.__add(a01b00);
+            //   + a10*b20    // term 3
+            let a10b20 = a.c1.c0.__mul(b.c2.c0);
+            result_c0_1 = result_c0_1.__add(a10b20);
 
-            let mut result_c0_1 = a00b01.__add(a01b00);
-            result_c0_1 = result_c0_1.__add(a10b20_add_b21);
-            result_c0_1 = result_c0_1.__add(a11b20_sub_b21);
-            result_c0_1 = result_c0_1.__add(a20b10_add_b11);
-            result_c0_1 = result_c0_1.__add(a21b10_sub_b11);
+            //   + 9*a10*b21  // term 4
+            let nineb21 = b.c2.c1.__mul(nine);
+            let a10nineb21 = a.c1.c0.__mul(nineb21);
+            result_c0_1 = result_c0_1.__add(a10nineb21);
 
-            //   result_c1_0 = a00 * b10 - a01 * b11 + a10 * b00 - a11 * b01 + a20 * b20 - a21 * b21
-            //                                                          - a20 * b21 - a21 * b20.
-            //               = a00 * b10 - a01 * b11 + a10 * b00 - a11 * b01 + a20 * (b20 - b21)
-            //                                                          - a21 * (b20 + b21).
-            let a00b10 = a.c0.c0.__mul(b.c1.c0);
-            let a01b11 = a.c0.c1.__mul(b.c1.c1);
-            let a10b00 = a.c1.c0.__mul(b.c0.c0);
-            let a11b01 = a.c1.c1.__mul(b.c0.c1);
-            let b20_sub_b21 = b.c2.c0.__sub(b.c2.c1);
-            let a20b20_sub_b21 = a.c2.c0.__mul(b20_sub_b21);
-            let b20_add_b21 = b.c2.c0.__add(b.c2.c1);
-            let a21b20_add_b21 = a.c2.c1.__mul(b20_add_b21);
+            //   + 9*a11*b20  // term 5
+            let nineb20 = b.c2.c0.__mul(nine);
+            let a11nineb20 = a.c1.c1.__mul(nineb20);
+            result_c0_1 = result_c0_1.__add(a11nineb20);
 
-            let mut result_c1_0 = a00b10.__sub(a01b11);
-            result_c1_0 = result_c1_0.__add(a10b00);
-            result_c1_0 = result_c1_0.__sub(a11b01);
-            result_c1_0 = result_c1_0.__add(a20b20_sub_b21);
-            result_c1_0 = result_c1_0.__sub(a21b20_add_b21);
+            //   - a11*b21    // term 6
+            let a11b21 = a.c1.c1.__mul(b.c2.c1);
+            result_c0_1 = result_c0_1.__sub(a11b21);
 
-            //   result_c1_1 = a00 * b11 + a01 * b10 + a10 * b01 + a11 * b00 + a20 * b21 + a21 * b20
-            //                                                          + a20 * b20 - a21 * b21.
-            //               = a00 * b11 + a01 * b10 + a10 * b01 + a11 * b00 + a20 * (b20 + b21)
-            //                                                          + a21 * (b20 - b21).
+            //   + a20*b10    // term 7
+            let a20b10 = a.c2.c0.__mul(b.c1.c0);
+            result_c0_1 = result_c0_1.__add(a20b10);
+
+            //   + 9*a20*b11  // term 8
+            let nineb11 = b.c1.c1.__mul(nine);
+            let a20nineb11 = a.c2.c0.__mul(nineb11);
+            result_c0_1 = result_c0_1.__add(a20nineb11);
+
+            //   + 9*a21*b10  // term 9
+            let nineb10 = b.c1.c0.__mul(nine);
+            let a21nineb10 = a.c2.c1.__mul(nineb10);
+            result_c0_1 = result_c0_1.__add(a21nineb10);
+
+            //   - a21*b11    // term 10
+            let a21b11 = a.c2.c1.__mul(b.c1.c1);
+            result_c0_1 = result_c0_1.__sub(a21b11);
+        
+            
+
+            //result_c1_0 =  a00*b10 - a01*b11 + a10*b00 - a11*b01 + 9*a20*b20 - a20*b21 - a21*b20 - 9*a21*b21
+            let a00b10 = a.c0.c0.__mul(b.c1.c0);                    // a00*b10
+            let a01b11 = a.c0.c1.__mul(b.c1.c1);                    // a01*b11
+            let a10b00 = a.c1.c0.__mul(b.c0.c0);                    // a10*b00
+            let a11b01 = a.c1.c1.__mul(b.c0.c1);                    // a11*b01
+            let nineb20 = b.c2.c0.__mul(nine);                      // 9*b20
+            let nineb20subb21 = nineb20.__sub(b.c2.c1);             // 9*b20 - b21
+            let a20nineb20subb21 = a.c2.c0.__mul(nineb20subb21);    // a20*(9*b20 - b21)
+            let nineb21 = b.c2.c1.__mul(nine);                      // 9*b21
+            let b20plus9b21 = b.c2.c0.__add(nineb21);               // b20 + 9*b21
+            let a21b20plus9b21 = a.c2.c1.__mul(b20plus9b21);        // a21*(b20 + 9*b21)
+
+            let mut result_c1_0 = a00b10;                           // a00*b10
+            result_c1_0 = result_c1_0.__sub(a01b11);               // - a01*b11
+            result_c1_0 = result_c1_0.__add(a10b00);               // + a10*b00
+            result_c1_0 = result_c1_0.__sub(a11b01);               // - a11*b01
+            result_c1_0 = result_c1_0.__add(a20nineb20subb21);     // + a20*(9*b20 - b21)
+            result_c1_0 = result_c1_0.__sub(a21b20plus9b21);       // - a21*(b20 + 9*b21)
+
+            
+            
+            
+
+
+            // result_c1_1= a00*b11 + a01*b10 + a10*b01 + a11*b00 + a20*b20 + 9*a20*b21 + 9*a21*b20 - a21*b21
+            // term 1: a00*b11
             let a00b11 = a.c0.c0.__mul(b.c1.c1);
+            let mut result_c1_1 = a00b11;
+            // term 2: a01*b10
             let a01b10 = a.c0.c1.__mul(b.c1.c0);
+            result_c1_1 = result_c1_1.__add(a01b10);
+            // term 3: a10*b01
             let a10b01 = a.c1.c0.__mul(b.c0.c1);
-            let a11b00 = a.c1.c1.__mul(b.c0.c0);
-            let b20_add_b21 = b.c2.c0.__add(b.c2.c1);
-            let a20b20_add_b21 = a.c2.c0.__mul(b20_add_b21);
-            let b20_sub_b21 = b.c2.c0.__sub(b.c2.c1);
-            let a21b20_sub_b21 = a.c2.c1.__mul(b20_sub_b21);
-
-            let mut result_c1_1 = a00b11.__add(a01b10);
             result_c1_1 = result_c1_1.__add(a10b01);
+            // term 4: a11*b00
+            let a11b00 = a.c1.c1.__mul(b.c0.c0);
             result_c1_1 = result_c1_1.__add(a11b00);
-            result_c1_1 = result_c1_1.__add(a20b20_add_b21);
-            result_c1_1 = result_c1_1.__add(a21b20_sub_b21);
+            // term 5: a20*b20
+            let a20b20 = a.c2.c0.__mul(b.c2.c0);
+            result_c1_1 = result_c1_1.__add(a20b20);
+            // term 6: 9*a20*b21
+            let nineb21 = b.c2.c1.__mul(nine);
+            let a20nineb21 = a.c2.c0.__mul(nineb21);
+            result_c1_1 = result_c1_1.__add(a20nineb21);
+            // term 7: 9*a21*b20
+            let nineb20 = b.c2.c0.__mul(nine);
+            let a21nineb20 = a.c2.c1.__mul(nineb20);
+            result_c1_1 = result_c1_1.__add(a21nineb20);
+            // term 8: -a21*b21
+            let a21b21 = a.c2.c1.__mul(b.c2.c1);
+            result_c1_1 = result_c1_1.__sub(a21b21);
 
-            //   result_c2_0 = a00 * b20 - a01 * b21 + a10 * b10 - a11 * b11 + a20 * b00 - a21 * b01.
+            
+
+
+            //   result_c2_0 =  a00*b20 - a01*b21 + a10*b10 - a11*b11 + a20*b00 - a21*b01
             let a00b20 = a.c0.c0.__mul(b.c2.c0);
             let a01b21 = a.c0.c1.__mul(b.c2.c1);
             let a10b10 = a.c1.c0.__mul(b.c1.c0);
@@ -168,13 +233,14 @@ impl Fp6 {
             let a20b00 = a.c2.c0.__mul(b.c0.c0);
             let a21b01 = a.c2.c1.__mul(b.c0.c1);
 
-            let mut result_c2_0 = a00b20.__sub(a01b21);
+            let mut result_c2_0 = a00b20;
+            result_c2_0 = result_c2_0.__sub(a01b21);
             result_c2_0 = result_c2_0.__add(a10b10);
             result_c2_0 = result_c2_0.__sub(a11b11);
             result_c2_0 = result_c2_0.__add(a20b00);
             result_c2_0 = result_c2_0.__sub(a21b01);
 
-            //   result_c2_1 = a00 * b21 + a01 * b20 + a10 * b11 + a11 * b10 + a20 * b01 + a21 * b00.
+            //   result_c2_1 = a00*b21 + a01*b20 + a10*b11 + a11*b10 + a20*b01 + a21*b00
             let a00b21 = a.c0.c0.__mul(b.c2.c1);
             let a01b20 = a.c0.c1.__mul(b.c2.c0);
             let a10b11 = a.c1.c0.__mul(b.c1.c1);
@@ -188,15 +254,18 @@ impl Fp6 {
             result_c2_1 = result_c2_1.__add(a20b01);
             result_c2_1 = result_c2_1.__add(a21b00);
 
-            /////////// CONSTRAINTS ///////////
+            /////////// CONSTRAING TIME!!! ///////////
+            // to do: this is extremely under constrained, we have to switch this whole section.
+            // update: fixed for c00 
             // Constraints for result_c0_0
-            // = a00 * b00 - a01 * b01 + a10 * (b20 - b21) - a11 * (b20 + b21)
-            //                                        + a20 * (b10 - b11) - a21 * (b10 + b11).
-            let lhs_terms_c0_0 = [[a.c0.c0], [a.c0.c1], [a.c1.c0], [a.c1.c1], [a.c2.c0], [a.c2.c1]];
-            let lhs_flags_c0_0 = [[false], [true], [false], [true], [false], [true]];
-            let rhs_terms_c0_0 =
-                [[b.c0.c0], [b.c0.c1], [b20_sub_b21], [b20_add_b21], [b10_sub_b11], [b10_add_b11]];
-            let rhs_flags_c0_0 = [[false], [false], [false], [false], [false], [false]];
+            // = result_c0_0 = 
+            //a00*b00 - a01*b01 + 9*a10*b20 - a10*b21 - a11*b20 -9*a11*b21 + 9*a20*b10 - a20*b11 - a21*b10 -9 *a21*b11
+            let lhs_terms_c0_0: [[BigNum<3, 254, BN254_Fq_Params>; 1]; 10] = [[a.c0.c0], [a.c0.c1] , [a.c1.c0] , [a.c1.c0] , [a.c1.c1] , [a.c1.c1], [a.c2.c0], [a.c2.c0], [a.c2.c1], [a.c2.c1]]; 
+            let lhs_flags_c0_0 = [[false],[true], [false], [true], [true], [true], [false], [true], [true], [true]]; 
+            let nine = Fp::from_slice([9, 0, 0]);
+            let rhs_terms_c0_0 = [[b.c0.c0] , [b.c0.c1], [b.c2.c0*nine ], [b.c2.c1] , [b.c2.c0] , [b.c2.c1 * nine], [b.c1.c0 * nine], [b.c1.c1] , [b.c1.c0], [b.c1.c1 * nine] ]; 
+    
+            let rhs_flags_c0_0 = [[false], [false], [false], [false], [false], [false], [false], [false], [false], [false]];
             let res_c0_0 = [result_c0_0];
             let res_flag_c0_0 = [true];
             BigNum::evaluate_quadratic_expression(
@@ -206,16 +275,14 @@ impl Fp6 {
                 rhs_flags_c0_0,
                 res_c0_0,
                 res_flag_c0_0,
-            );
+            ); 
 
             // Constraints for result_c0_1
-            //   = a00 * b01 + a01 * b00 + a10 * (b20 + b21) + a11 * (b20 - b21)
-            //                                        + a20 * (b10 + b11) + a21 * (b10 - b11).
-            let lhs_terms_c0_1 = [[a.c0.c0], [a.c0.c1], [a.c1.c0], [a.c1.c1], [a.c2.c0], [a.c2.c1]];
-            let lhs_flags_c0_1 = [[false], [false], [false], [false], [false], [false]];
-            let rhs_terms_c0_1 =
-                [[b.c0.c1], [b.c0.c0], [b20_add_b21], [b20_sub_b21], [b10_add_b11], [b10_sub_b11]];
-            let rhs_flags_c0_1 = [[false], [false], [false], [false], [false], [false]];
+            //=  a00*b01 + a01*b00 + a10*b20 + 9*a10*b21 + 9*a11*b20 - a11*b21 + a20*b10 + 9*a20*b11 + 9*a21*b10 - a21*b11
+            let lhs_terms_c0_1: [[BigNum<3, 254, BN254_Fq_Params>; 1]; 10] = [[a.c0.c0], [a.c0.c1], [a.c1.c0], [a.c1.c0], [a.c1.c1], [a.c1.c1], [a.c2.c0], [a.c2.c0], [a.c2.c1], [a.c2.c1]];
+            let lhs_flags_c0_1 = [[false], [false], [false], [false], [false], [true], [false], [false], [false], [true]];
+            let rhs_terms_c0_1 = [[b.c0.c1], [b.c0.c0], [b.c2.c0], [b.c2.c1 * nine], [b.c2.c0 * nine], [b.c2.c1], [b.c1.c0], [b.c1.c1 * nine], [b.c1.c0 * nine], [b.c1.c1]];
+            let rhs_flags_c0_1 = [[false], [false], [false], [false], [false], [false], [false], [false], [false], [false]];
             let res_c0_1 = [result_c0_1];
             let res_flag_c0_1 = [true];
             BigNum::evaluate_quadratic_expression(
@@ -228,13 +295,21 @@ impl Fp6 {
             );
 
             // Constraints for result_c1_0
-            // = a00 * b10 - a01 * b11 + a10 * b00 - a11 * b01 + a20 * (b20 - b21)
-            //                                                          - a21 * (b20 + b21).
-            let lhs_terms_c1_0 = [[a.c0.c0], [a.c0.c1], [a.c1.c0], [a.c1.c1], [a.c2.c0], [a.c2.c1]];
-            let lhs_flags_c1_0 = [[false], [true], [false], [true], [false], [true]];
-            let rhs_terms_c1_0 =
-                [[b.c1.c0], [b.c1.c1], [b.c0.c0], [b.c0.c1], [b20_sub_b21], [b20_add_b21]];
-            let rhs_flags_c1_0 = [[false], [false], [false], [false], [false], [false]];
+            // = a00*b10 - a01*b11 + a10*b00 - a11*b01 + 9*a20*b20 - a20*b21 - a21*b20 - 9*a21*b21
+            // The constraints match the equation:
+            // + a00*b10          (term 0, no negation)
+            // - a01*b11          (term 1, negated)
+            // + a10*b00          (term 2, no negation) 
+            // - a11*b01          (term 3, negated)
+            // + 9*a20*b20        (term 4, no negation)
+            // - a20*b21          (term 5, negated)
+            // - a21*b20          (term 6, negated)
+            // - 9*a21*b21        (term 7, negated)
+            // Checking against the constraints:
+            let lhs_terms_c1_0 = [[a.c0.c0], [a.c0.c1], [a.c1.c0], [a.c1.c1], [a.c2.c0], [a.c2.c0], [a.c2.c1], [a.c2.c1]];
+            let lhs_flags_c1_0 = [[false], [true], [false], [true], [false], [true], [true], [true]];
+            let rhs_terms_c1_0 = [[b.c1.c0], [b.c1.c1], [b.c0.c0], [b.c0.c1], [b.c2.c0 * nine], [b.c2.c1], [b.c2.c0], [b.c2.c1 * nine]];
+            let rhs_flags_c1_0 = [[false], [false], [false], [false], [false], [false], [false], [false]];
             let res_c1_0 = [result_c1_0];
             let res_flag_c1_0 = [true];
             BigNum::evaluate_quadratic_expression(
@@ -246,14 +321,14 @@ impl Fp6 {
                 res_flag_c1_0,
             );
 
+
+            
             // Constraints for result_c1_1
-            // = a00 * b11 + a01 * b10 + a10 * b01 + a11 * b00 + a20 * (b20 + b21)
-            //                                                          + a21 * (b20 - b21).
-            let lhs_terms_c1_1 = [[a.c0.c0], [a.c0.c1], [a.c1.c0], [a.c1.c1], [a.c2.c0], [a.c2.c1]];
-            let lhs_flags_c1_1 = [[false], [false], [false], [false], [false], [false]];
-            let rhs_terms_c1_1 =
-                [[b.c1.c1], [b.c1.c0], [b.c0.c1], [b.c0.c0], [b20_add_b21], [b20_sub_b21]];
-            let rhs_flags_c1_1 = [[false], [false], [false], [false], [false], [false]];
+            // = a00*b11 + a01*b10 + a10*b01 + a11*b00 + a20*b20 + 9*a20*b21 + 9*a21*b20 - a21*b21
+            let lhs_terms_c1_1 = [[a.c0.c0], [a.c0.c1], [a.c1.c0], [a.c1.c1], [a.c2.c0], [a.c2.c0], [a.c2.c1], [a.c2.c1]];
+            let lhs_flags_c1_1 = [[false], [false], [false], [false], [false], [false], [false], [true]];
+            let rhs_terms_c1_1 = [[b.c1.c1], [b.c1.c0], [b.c0.c1], [b.c0.c0], [b.c2.c0], [b.c2.c1 * nine], [b.c2.c0 * nine], [b.c2.c1]];
+            let rhs_flags_c1_1 = [[false], [false], [false], [false], [false], [false], [false], [false]];
             let res_c1_1 = [result_c1_1];
             let res_flag_c1_1 = [true];
             BigNum::evaluate_quadratic_expression(
@@ -265,8 +340,7 @@ impl Fp6 {
                 res_flag_c1_1,
             );
 
-            // Constraints for result_c2_0
-            //   result_c2_0 = a00 * b20 - a01 * b21 + a10 * b10 - a11 * b11 + a20 * b00 - a21 * b01.
+            // constrains for c2_0 = a00*b20 - a01*b21 + a10*b10 - a11*b11 + a20*b00 - a21*b01
             let lhs_terms_c2_0 = [[a.c0.c0], [a.c0.c1], [a.c1.c0], [a.c1.c1], [a.c2.c0], [a.c2.c1]];
             let lhs_flags_c2_0 = [[false], [true], [false], [true], [false], [true]];
             let rhs_terms_c2_0 = [[b.c2.c0], [b.c2.c1], [b.c1.c0], [b.c1.c1], [b.c0.c0], [b.c0.c1]];
@@ -411,62 +485,45 @@ impl std::ops::Sub for Fp6 {
 
 impl std::ops::Mul for Fp6 {
     // TODO: mudify this to use the optimized mul_interleaved
-    // fn mul(self: Self, other: Self) -> Self {
-    // let a_0 = self.c0;
-    // let a_1 = self.c1;
-    // let a_2 = self.c2;
-
-    // let b_0 = other.c0;
-    // let b_1 = other.c1;
-    // let b_2 = other.c2;
-
-    // let c_3 = (a_1 * b_2 + a_2 * b_1).mul_by_nonresidue();
-    // let c_4 = (a_2 * b_2).mul_by_nonresidue();
-
-    // let c_0 = a_0 * b_0 + c_3;
-    // let c_1 = a_0 * b_1 + a_1 * b_0 + c_4;
-    // let c_2 = a_0 * b_2 + a_1 * b_1 + a_2 * b_0 + c_3;
-
-    // Self { c0: c_0 , c1: c_1 , c2: c_2 }
-    // }
     fn mul(self: Self, other: Self) -> Self {
-        let a_a = self.c0.mul(other.c0);
-        let b_b = self.c1.mul(other.c1);
-        let c_c = self.c2.mul(other.c2);
+        // let a_a = self.c0.mul(other.c0);
+        // let b_b = self.c1.mul(other.c1);
+        // let c_c = self.c2.mul(other.c2);
 
-        // Construct t1
-        let t1 = other.c1;
-        let t1 = t1.add(other.c2);
+        // // Construct t1
+        // let t1 = other.c1;
+        // let t1 = t1.add(other.c2);
 
-        let tmp = self.c1.add(self.c2);
-        let t1 = t1.mul(tmp);
-        let t1 = t1.sub(b_b);
-        let t1 = t1.sub(c_c);
-        let t1 = t1.mul_by_non_residue();
-        let t1 = t1.add(a_a);
+        // let tmp = self.c1.add(self.c2);
+        // let t1 = t1.mul(tmp);
+        // let t1 = t1.sub(b_b);
+        // let t1 = t1.sub(c_c);
+        // let t1 = t1.mul_by_non_residue();
+        // let t1 = t1.add(a_a);
 
-        // Construct t3
-        let t3 = other.c0;
-        let t3 = t3.add(other.c2);
+        // // Construct t3
+        // let t3 = other.c0;
+        // let t3 = t3.add(other.c2);
 
-        let tmp = self.c0.add(self.c2);
-        let t3 = t3.mul(tmp);
-        let t3 = t3.sub(a_a);
-        let t3 = t3.add(b_b);
-        let t3 = t3.sub(c_c);
+        // let tmp = self.c0.add(self.c2);
+        // let t3 = t3.mul(tmp);
+        // let t3 = t3.sub(a_a);
+        // let t3 = t3.add(b_b);
+        // let t3 = t3.sub(c_c);
 
-        // Construct t2
-        let t2 = other.c0;
-        let t2 = t2.add(other.c1);
+        // // Construct t2
+        // let t2 = other.c0;
+        // let t2 = t2.add(other.c1);
 
-        let tmp = self.c0.add(self.c1);
-        let t2 = t2.mul(tmp);
-        let t2 = t2.sub(a_a);
-        let t2 = t2.sub(b_b);
-        let c_c_mul_by_nonres = c_c.mul_by_non_residue();
-        let t2 = t2.add(c_c_mul_by_nonres);
+        // let tmp = self.c0.add(self.c1);
+        // let t2 = t2.mul(tmp);
+        // let t2 = t2.sub(a_a);
+        // let t2 = t2.sub(b_b);
+        // let c_c_mul_by_nonres = c_c.mul_by_non_residue();
+        // let t2 = t2.add(c_c_mul_by_nonres);
 
-        Self { c0: t1, c1: t2, c2: t3 }
+        // Self { c0: t1, c1: t2, c2: t3 }
+        self.mul_interleaved(other) 
     }
 }
 
@@ -483,11 +540,11 @@ comptime global SEED_0: [u8; 32] = [
     0x60, 0x77, 0xbf, 0x21, 0x82, 0x2e, 0x6d, 0x40, 0x5d, 0x65, 0xac, 0x2d, 0x0f, 0x0b, 0x3e, 0x75,
 ];
 
-comptime global SEED_1 = keccak256(SEED_0, 32);
-comptime global SEED_2 = keccak256(SEED_1, 32);
-comptime global SEED_3 = keccak256(SEED_2, 32);
-comptime global SEED_4 = keccak256(SEED_3, 32);
-comptime global SEED_5 = keccak256(SEED_4, 32);
+comptime global SEED_1: [u8; 32] = keccak256(SEED_0, 32);
+comptime global SEED_2: [u8; 32] = keccak256(SEED_1, 32);
+comptime global SEED_3: [u8; 32] = keccak256(SEED_2, 32);
+comptime global SEED_4: [u8; 32] = keccak256(SEED_3, 32);
+comptime global SEED_5: [u8; 32] = keccak256(SEED_4, 32);
 
 #[test]
 fn test_add_identity() {
@@ -552,6 +609,7 @@ fn test_mul() {
             [1127469633954639076687122832280634501, 384973290833791765662151864406027283, 6577],
             [240807479084837380482481895969134031, 615221729286056607213692266989250466, 3412],
         ),
+
         c2: Fp2::new(
             [648583634891115237590656777438366888, 196330182240574212351377511437222610, 111],
             [415311780186006812910310129930084039, 207811584817201665093984844957365187, 6876],
@@ -567,9 +625,19 @@ fn test_mul() {
             [266656749817180616673516288090981873, 268257111370955002784716808410768013, 4121],
             [842609025697615925249905878814309698, 1304291885525753312721670863999755284, 12039],
         ),
+        // c2: Fp2::new(
+        //     [0, 0, 0],
+        //     [0, 0, 0],
+        // ),
+        // c1: Fp2::new(
+        //     [266656749817180616673516288090981873, 268257111370955002784716808410768013, 4121],
+        //     [842609025697615925249905878814309698, 1304291885525753312721670863999755284, 12039],
+        // ),
         c2: Fp2::new(
             [340264409667458652850640609510042144, 489147825056556503523154647718538571, 4954],
+            // [1, 0, 0],
             [718683732117605645373316913303678770, 228102735559184690191635657008341956, 4458],
+            // [1, 0, 0],
         ),
     };
 
