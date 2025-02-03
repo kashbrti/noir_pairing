@@ -1,9 +1,11 @@
+use crate::bn::fp2::ExtensionFieldTrait;
 use crate::bn::fp2::Fp2;
 use crate::bn::fp6::Fp6;
 use crate::bn::mod_p12m1::ModP12M1Params;
-use bignum::BigNumTrait;
 use bignum::BigNum;
+use bignum::BigNumTrait;
 use bignum::utils::u60_representation::U60Repr;
+
 
 /// Polynomial Extension Field Tower of Degree `12`.
 ///
@@ -16,36 +18,26 @@ pub struct Fp12 {
     pub(crate) c1: Fp6,
 }
 
-impl Fp12 {
-    /// Constructs an element of `Fp12` from two elements of `Fp6`.
-    pub fn new(c0: Fp6, c1: Fp6) -> Self {
-        Fp12 { c0, c1 }
-    }
 
+
+impl ExtensionFieldTrait for Fp12 {
     /// Constructs the additive unit (zero) element.
-    pub fn zero() -> Self {
+    fn zero() -> Self {
         Fp12 { c0: Fp6::zero(), c1: Fp6::zero() }
     }
 
     /// Constructs the multiplicative unit (one) element.
-    pub fn one() -> Self {
+    fn one() -> Self {
         Fp12 { c0: Fp6::one(), c1: Fp6::zero() }
     }
 
     /// Returns the element's additive inverse (negation).
-    pub fn neg(self: Self) -> Self {
+    fn neg(self: Self) -> Self {
         Self { c0: self.c0.neg(), c1: self.c1.neg() }
     }
 
-    /// Returns the conjugate of the element.
-    ///
-    /// Functionally, this inverts the exponent `1` coefficient, not changing the constant.
-    pub fn conjugate(self: Self) -> Self {
-        Self { c0: self.c0, c1: self.c1.neg() }
-    }
-
     /// Returns the square of the element.
-    pub fn square(self: Fp12) -> Fp12 {
+    fn square(self: Fp12) -> Fp12 {
         // ab = self.c0 * self.c1
         let ab = self.c0 * self.c1;
 
@@ -77,7 +69,7 @@ impl Fp12 {
     /// For optimization purposes, `Fp12` being composed of `Fp6` elements compmosed of `Fp2`
     /// elements enables a faster frobenius endomorphism over `Fp2` (see `Fp2::frobenius_map`) and
     /// `Fp6`, finally we perform multiplication over `c1` by the constant defined below.
-    pub fn frobenius_map(self: Self) -> Self {
+    fn frobenius_map(self: Self) -> Self {
         // Fp12 = Fp2[x]/X^6 - u
         // decompose the point into its Fp2 coefficients
         // so if we have f = g + h w where h , g are in Fp6
@@ -102,6 +94,41 @@ impl Fp12 {
         t5 = t5.mul_by_non_residue_power_5();
 
         Fp12 { c0: Fp6::new(t0, t2, t4), c1: Fp6::new(t1, t3, t5) }
+    }
+
+    fn double(self) -> Self {
+        self + self
+    }
+
+    /// Returns the elements multiplicative inverse.
+    ///
+    /// ## Panics
+    ///
+    /// - if there is no multiplicative inverse for the element.
+    pub fn invert(self: Self) -> Self {
+        let c02 = self.c0.mul(self.c0);
+        let c12 = self.c1.mul(self.c1);
+        let c12 = c12.mul_by_nonresidue();
+        let c02 = c02.sub(c12);
+        let c0 = c02.invert();
+        let c1 = c02.invert();
+        let c0 = c0.mul(self.c0);
+        let c1 = c1.mul(self.c1);
+        let c1 = c1.neg();
+
+        Self { c0, c1 }
+    }
+
+
+
+}
+
+impl Fp12 {
+    /// Returns the conjugate of the element.
+    ///
+    /// Functionally, this inverts the exponent `1` coefficient, not changing the constant.
+    pub fn conjugate(self: Self) -> Self {
+        Self { c0: self.c0, c1: self.c1.neg() }
     }
 
     /// Returns the result of the frobenius endomorphism two times over `Fp12`
@@ -229,24 +256,6 @@ impl Fp12 {
         exp * first_frobenius * second_frobenius.invert() * third_frobenius
     }
 
-    /// Returns the elements multiplicative inverse.
-    ///
-    /// ## Panics
-    ///
-    /// - if there is no multiplicative inverse for the element.
-    pub fn invert(self: Self) -> Self {
-        let c02 = self.c0.mul(self.c0);
-        let c12 = self.c1.mul(self.c1);
-        let c12 = c12.mul_by_nonresidue();
-        let c02 = c02.sub(c12);
-        let c0 = c02.invert();
-        let c1 = c02.invert();
-        let c0 = c0.mul(self.c0);
-        let c1 = c1.mul(self.c1);
-        let c1 = c1.neg();
-
-        Self { c0, c1 }
-    }
 
     /// Performs a sparse multiplication between `Fp12` and three elements of `Fp2`.
     ///
@@ -265,23 +274,28 @@ impl Fp12 {
         Fp12 { c0, c1 }
     }
 
-    /// Returns unconstrained exponentiation of an element in `Fp12`.
-    pub(crate) unconstrained fn __pow<T, let N: u32, let MOD_BITS: u32>(self: Self, exp: T) -> Self
-    where
-        T: BigNumTrait,
-    {
-        let num_bits = MOD_BITS + 1;
-        let mut accumulator = Fp12::one();
-        let exp_limbs: [Field; N] = exp.get_limbs_slice().as_array();
-        let x: U60Repr<N, 2> = U60Repr::from(exp_limbs);
-        for i in 0..num_bits {
-            accumulator = accumulator * accumulator;
-            if x.get_bit(num_bits - i - 1) {
-                accumulator = accumulator * self;
-            }
-        }
-        accumulator
+
+    // an unconstrained function that returns the third root of the element 
+    #[oracle(third_root)]
+    pub fn __third_root(self: Self) -> Self {
     }
+    /// Returns unconstrained exponentiation of an element in `Fp12`.
+    // pub(crate) unconstrained fn __pow<T, let N: u32, let MOD_BITS: u32>(self: Self, exp: T) -> Self
+    // where
+    //     T: BigNumTrait,
+    // {
+    //     let num_bits = MOD_BITS + 1;
+    //     let mut accumulator = Fp12::one();
+    //     let exp_limbs: [Field; N] = exp.get_limbs_slice().as_array();
+    //     let x: U60Repr<N, 2> = U60Repr::from(exp_limbs);
+    //     for i in 0..num_bits {
+    //         accumulator = accumulator * accumulator;
+    //         if x.get_bit(num_bits - i - 1) {
+    //             accumulator = accumulator * self;
+    //         }
+    //     }
+    //     accumulator
+    // }
 }
 
 impl std::ops::Add for Fp12 {
@@ -313,6 +327,14 @@ impl std::cmp::Eq for Fp12 {
     fn eq(self, other: Self) -> bool {
         (self.c0 == other.c0) & (self.c1 == other.c1)
     }
+}
+
+
+#[test]
+fn test_third_root() {
+    let a = Fp12::one();
+    let out = a.__third_root();
+    assert(out == a);
 }
 
 // #[test]
@@ -702,7 +724,6 @@ impl std::cmp::Eq for Fp12 {
 //     assert(check.eq(Fp12::one()));
 // }
 
-
 #[test]
 fn test_one() {
     let a = Fp12 {
@@ -820,7 +841,7 @@ fn test_square() {
         },
     };
     let res = a.square();
-    assert(res.eq(a*a));
+    assert(res.eq(a * a));
 }
 
 #[test]
@@ -879,7 +900,7 @@ fn test_frobenius_map() {
 }
 
 #[test]
-fn test_exp() {
+fn test_exp_lambda() {
     // let a = Fp12::one();
     // let res = a.exp_lambda();
     // assert(res.eq(a));
@@ -923,40 +944,3 @@ fn test_exp() {
     assert((res * res2).eq(Fp12::one()));
 }
 
-pub type Mod_p12m1 = BigNum<26, 3044, ModP12M1Params>;
-#[test]
-fn test_pow() {
-    let a = Fp12::one();
-    let exp = Mod_p12m1 {
-        limbs: [
-            1206423690719056723020559411943903965,
-            1098160929578653273637355881152779885,
-            458,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-        ],
-    };
-    let res = a.__pow::<Mod_p12m1, 26, 3044>(exp);
-    assert(res.eq(a));
-}

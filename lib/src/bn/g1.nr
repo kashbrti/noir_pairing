@@ -15,16 +15,8 @@ impl G1Affine {
     /// Returns the generator point in `G1`.
     pub fn generator() -> Self {
         Self {
-            x: BigNum {
-                limbs: [
-                    0x01, 0x00, 0x00
-                ],
-            },
-            y: BigNum {
-                limbs: [
-                    0x02, 0x00, 0x00
-                ],
-            },
+            x: BigNum { limbs: [0x01, 0x00, 0x00] },
+            y: BigNum { limbs: [0x02, 0x00, 0x00] },
             infinity: false,
         }
     }

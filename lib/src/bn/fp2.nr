@@ -19,37 +19,37 @@ pub struct Fp2 {
     pub(crate) c1: Fp,
 }
 
-impl Fp2 {
-    /// Constructs an element of `Fp2` from two field arrays.
-    ///
-    /// > TODO: Should this be parameterized by `Fp` instances instead?
-    pub fn new(c0: [Field; 3], c1: [Field; 3]) -> Self {
-        Fp2 { c0: BigNum { limbs: c0 }, c1: BigNum { limbs: c1 } }
-    }
+pub trait ExtensionFieldTrait {
+    fn zero() -> Self;
+    fn one() -> Self;
+    fn neg(self: Self) -> Self;
+    fn double(self: Self) -> Self;
+    fn square(self: Self) -> Self;
+    fn invert(self: Self) -> Self;
+    fn frobenius_map(self: Self) -> Self;
+}
 
+
+impl ExtensionFieldTrait for Fp2 {
     /// Constructs the additive unit (zero) element.
-    pub fn zero() -> Fp2 {
+    fn zero() -> Fp2 {
         Fp2 { c0: BigNum::new(), c1: BigNum::new() }
     }
 
     /// Constructs the multiplicative unit (one) element.
-    pub fn one() -> Fp2 {
+    fn one() -> Fp2 {
         Fp2 { c0: BigNum::one(), c1: BigNum::new() }
     }
 
     /// Returns the element's additive inverse (negation).
-    pub fn neg(self: Self) -> Self {
+    fn neg(self: Self) -> Self {
         Self { c0: self.c0.neg(), c1: self.c1.neg() }
     }
 
-    /// Returns true if both coefficients are zero.
-    pub fn is_zero(self: Self) -> bool {
-        (self.c0 == BigNum::new()) & (self.c1 == BigNum::new())
-    }
-
+    
 
     // Returns the double of the element
-    pub fn double(self: Self) -> Self {
+    fn double(self: Self) -> Self {
         let c0 = self.c0; 
         let c1 = self.c1;
         let res_c0 = c0 + c0;
@@ -58,7 +58,7 @@ impl Fp2 {
     }
 
     /// Returns the square of the element.
-    pub fn square(self: Self) -> Self {
+    fn square(self: Self) -> Self {
         unsafe {
             // a = c0 + c1
             // b = c0 - c1
@@ -113,7 +113,7 @@ impl Fp2 {
     /// ## Panics
     ///
     /// - if there is no multiplicative inverse for the element.
-    pub fn invert(self: Self) -> Self {
+    fn invert(self: Self) -> Self {
         unsafe {
             // (self.c0 * self.c0 + self.c1 * self.c1).invert()
             let c0_square = self.c0.__mul(self.c0);
@@ -155,9 +155,40 @@ impl Fp2 {
         }
     }
 
-    /// Scales the element by an element of Fp.
-    pub fn scale(self, scalar: Fp) -> Self {
-        Self { c0: self.c0 * scalar, c1: self.c1 * scalar }
+
+
+    /// Returns the result of the frobenius endomorphism over `Fp2`
+    ///
+    /// Frobenius exponentiates the element to the prime field modulus `p` such that raising the
+    /// constant term, `c0` to the `p` returns `c0`.
+    ///
+    /// `(c0 ** p) % p == c0`
+    ///
+    /// However, raising the exponent `1` term `c1 * u` to the `p` returns `-c1 * u`.
+    ///
+    /// `(c1 ** p) % p == c1`
+    /// `(u ** p) % p == -u`
+    ///
+    /// Thus we return the result of `Fp2::conjugate`.
+    fn frobenius_map(self: Self) -> Self {
+        // (c0 + c1*u)^p = c0^p + (c1*u)^p
+        // and c0^p=c0, c1^p=c1, and u^p = -u, so the result is:
+        // c0 - c1
+        self.conjugate()
+    }
+}
+
+impl Fp2 {
+    /// Constructs an element of `Fp2` from two field arrays.
+    ///
+    /// > TODO: Should this be parameterized by `Fp` instances instead?
+    pub fn new(c0: [Field; 3], c1: [Field; 3]) -> Self {
+        Fp2 { c0: BigNum { limbs: c0 }, c1: BigNum { limbs: c1 } }
+    }
+
+    /// Returns true if both coefficients are zero.
+    pub fn is_zero(self: Self) -> bool {
+        (self.c0 == BigNum::new()) & (self.c1 == BigNum::new())
     }
 
 
@@ -239,24 +270,10 @@ impl Fp2 {
         Fp2 { c0: self.c0, c1: self.c1.neg() }
     }
 
-    /// Returns the result of the frobenius endomorphism over `Fp2`
-    ///
-    /// Frobenius exponentiates the element to the prime field modulus `p` such that raising the
-    /// constant term, `c0` to the `p` returns `c0`.
-    ///
-    /// `(c0 ** p) % p == c0`
-    ///
-    /// However, raising the exponent `1` term `c1 * u` to the `p` returns `-c1 * u`.
-    ///
-    /// `(c1 ** p) % p == c1`
-    /// `(u ** p) % p == -u`
-    ///
-    /// Thus we return the result of `Fp2::conjugate`.
-    pub fn frobenius_map(self: Self) -> Self {
-        // (c0 + c1*u)^p = c0^p + (c1*u)^p
-        // and c0^p=c0, c1^p=c1, and u^p = -u, so the result is:
-        // c0 - c1
-        self.conjugate()
+
+    /// Scales the element by an element of Fp.
+    pub fn scale(self, scalar: Fp) -> Self {
+        Self { c0: self.c0 * scalar, c1: self.c1 * scalar }
     }
 }
 

@@ -40,10 +40,6 @@ impl Ell {
 
     /// Scales the coefficients of an Ell instance by an affine point.
     pub(crate) fn scale_by_affine(self, p: G1Affine) -> Self {
-        Self {
-            c0_c0: self.c0_c0,
-            c1_c0: self.c1_c0.scale(p.x),
-            c1_c1: self.c1_c1.scale(p.y),
-        }
+        Self { c0_c0: self.c0_c0, c1_c0: self.c1_c0.scale(p.x), c1_c1: self.c1_c1.scale(p.y) }
     }
 }

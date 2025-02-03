@@ -25,28 +25,12 @@ impl G2Affine {
     pub fn generator() -> Self {
         G2Affine {
             x: Fp2::new(
-                [
-                    0x1800deef121f1e76426a00665e5c44,
-                    0x79674322d4f75edadd46debd5cd992,
-                    0xf6ed,
-                ],
-                [
-                    0x198e9393920d483a7260bfb731fb5d,
-                    0x25f1aa493335a9e71297e485b7aef3,
-                    0x12c2,
-                ],
+                [0x1800deef121f1e76426a00665e5c44, 0x79674322d4f75edadd46debd5cd992, 0xf6ed],
+                [0x198e9393920d483a7260bfb731fb5d, 0x25f1aa493335a9e71297e485b7aef3, 0x12c2],
             ),
             y: Fp2::new(
-                [
-                    0x12c85ea5db8c6deb4aab71808dcb40,
-                    0x8fe3d1e7690c43d37b4ce6cc0166fa,
-                    0x7daa,
-                ],
-                [
-                    0x90689d0585ff075ec9e99ad690c339,
-                    0x5bc4b313370b38ef355acdadcd1229,
-                    0x75b,
-                ],
+                [0x12c85ea5db8c6deb4aab71808dcb40, 0x8fe3d1e7690c43d37b4ce6cc0166fa, 0x7daa],
+                [0x90689d0585ff075ec9e99ad690c339, 0x5bc4b313370b38ef355acdadcd1229, 0x75b],
             ),
             infinity: false,
         }
