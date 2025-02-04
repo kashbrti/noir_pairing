@@ -22,7 +22,7 @@ pub type Mod_p12m1 = BigNum<26, 3044, ModP12M1Params>;
 
 /// Unconstrained final exponentiation
 
-pub(crate) unconstrained fn __final_exponentiation(input: Fp12) -> Fp12 {
+pub(crate) fn final_exponentiation(input: Fp12) -> Fp12 {
     let mut f = input;
     let mut t0 = f
         .frobenius_map()
@@ -194,3 +194,4 @@ fn test_witness_generator(){
     println("u: ");
     println(u);
 }
+

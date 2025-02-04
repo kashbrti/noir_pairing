@@ -2,10 +2,12 @@ use crate::bn::fp2::ExtensionFieldTrait;
 use crate::bn::fp2::Fp2;
 use crate::bn::fp2::Fp;
 use crate::bn::fp6::Fp6;
+use crate::bn::pairing::Ell;
 use crate::bn::mod_p12m1::ModP12M1Params;
 use bignum::BigNum;
 use bignum::BigNumTrait;
 use bignum::utils::u60_representation::U60Repr;
+
 
 
 
@@ -284,6 +286,23 @@ impl Fp12 {
         let mut c0 = bb;
         c0 = c0.mul_by_nonresidue();
         c0 = c0 + aa;
+
+        Fp12 { c0, c1 }
+    }
+
+
+    pub fn sparse_mul(self, ell: Ell) -> Fp12 {
+        let aa = self.c0.mul_by_01(ell.c0_c0, ell.c1_c0);
+        let bb = self.c1.mul_by_1(ell.c1_c1);
+        let o = ell.c1_c0.add(ell.c1_c1);
+
+        let mut c1 = self.c1.add(self.c0);
+        c1 = c1.mul_by_01(ell.c0_c0, o);
+        c1 = c1.sub(aa).sub(bb);
+
+        let mut c0 = bb;
+        c0 = c0.mul_by_nonresidue();
+        c0 = c0.add(aa);
 
         Fp12 { c0, c1 }
     }

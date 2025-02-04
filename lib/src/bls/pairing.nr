@@ -2,7 +2,7 @@ use crate::bls::fp12::Fp12;
 use crate::bls::fp2::Fp2;
 use crate::bls::g1::G1Affine;
 use crate::bls::g2::{G2Affine, G2Projective};
-use crate::helpers::__final_exponentiation;
+use crate::helpers::final_exponentiation;
 
 /// Encapsulates sparse non-zero coefficients in Fp12.
 ///

@@ -57,4 +57,8 @@ impl G2Projective {
 
         G2Projective { x: p.x, y: p.y, z }
     }
+
+    pub fn neg(self: Self) -> Self {
+        G2Projective { x: self.x, y: self.y.neg(), z: self.z }
+    }
 }
