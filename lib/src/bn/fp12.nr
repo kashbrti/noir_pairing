@@ -1,10 +1,12 @@
 use crate::bn::fp2::ExtensionFieldTrait;
 use crate::bn::fp2::Fp2;
+use crate::bn::fp2::Fp;
 use crate::bn::fp6::Fp6;
 use crate::bn::mod_p12m1::ModP12M1Params;
 use bignum::BigNum;
 use bignum::BigNumTrait;
 use bignum::utils::u60_representation::U60Repr;
+
 
 
 /// Polynomial Extension Field Tower of Degree `12`.
@@ -127,6 +129,18 @@ impl Fp12 {
     /// Returns the conjugate of the element.
     ///
     /// Functionally, this inverts the exponent `1` coefficient, not changing the constant.
+    pub fn from_coeff(limbs: [[Field; 3]; 12]) -> Self {
+        let c00 = Fp2 {c0: Fp {limbs: limbs[0]}, c1: Fp {limbs: limbs[1]}}; 
+        let c01 = Fp2 {c0: Fp {limbs: limbs[2]}, c1: Fp {limbs: limbs[3]}}; 
+        let c02 = Fp2 {c0: Fp {limbs: limbs[4]}, c1: Fp {limbs: limbs[5]}}; 
+        let c10 = Fp2 {c0: Fp {limbs: limbs[6]}, c1: Fp {limbs: limbs[7]}}; 
+        let c11 = Fp2 {c0: Fp {limbs: limbs[8]}, c1: Fp {limbs: limbs[9]}}; 
+        let c12 = Fp2 {c0: Fp {limbs: limbs[10]}, c1: Fp {limbs: limbs[11]}}; 
+        let c0 = Fp6 {c0: c00, c1: c01, c2: c02}; 
+        let c1 = Fp6 {c0: c10, c1: c11, c2: c12}; 
+        Fp12 {c0, c1}
+    }
+
     pub fn conjugate(self: Self) -> Self {
         Self { c0: self.c0, c1: self.c1.neg() }
     }
@@ -276,26 +290,20 @@ impl Fp12 {
 
 
     // an unconstrained function that returns the third root of the element 
-    #[oracle(third_root)]
-    pub fn __third_root(self: Self) -> Self {
+    pub unconstrained fn __third_root(self: Self) -> Self {
+        let limbs: [[Field; 3]; 12] = __third_root_oracle(self); 
+        Self::from_coeff(limbs)
     }
-    /// Returns unconstrained exponentiation of an element in `Fp12`.
-    // pub(crate) unconstrained fn __pow<T, let N: u32, let MOD_BITS: u32>(self: Self, exp: T) -> Self
-    // where
-    //     T: BigNumTrait,
-    // {
-    //     let num_bits = MOD_BITS + 1;
-    //     let mut accumulator = Fp12::one();
-    //     let exp_limbs: [Field; N] = exp.get_limbs_slice().as_array();
-    //     let x: U60Repr<N, 2> = U60Repr::from(exp_limbs);
-    //     for i in 0..num_bits {
-    //         accumulator = accumulator * accumulator;
-    //         if x.get_bit(num_bits - i - 1) {
-    //             accumulator = accumulator * self;
-    //         }
-    //     }
-    //     accumulator
-    // }
+
+    pub unconstrained fn __is_third_root(self: Self) -> bool {
+        let out = unsafe{__is_third_root_oracle(self)};
+        out
+    }
+
+    pub unconstrained fn __random_third_root() -> Self {
+        let limbs = unsafe{__random_third_root_oracle()};
+        Self::from_coeff(limbs)
+    }
 }
 
 impl std::ops::Add for Fp12 {
@@ -329,13 +337,46 @@ impl std::cmp::Eq for Fp12 {
     }
 }
 
+#[oracle(third_root)]
+pub unconstrained fn __third_root_oracle(a: Fp12) -> [[Field; 3];12] {
+}
+
+
+#[oracle(random_third_root)]
+pub unconstrained fn __random_third_root_oracle() -> [[Field; 3];12] {
+}
+
+#[oracle(is_third_root)]
+pub unconstrained fn __is_third_root_oracle(a: Fp12) -> bool {
+}
+
+
+
+// the oracle tests ==================================================
+#[test]
+fn test_random_third_root() {
+    let out = unsafe{Fp12::__random_third_root()}; 
+    assert(unsafe{out.__is_third_root() == true});
+}
 
 #[test]
 fn test_third_root() {
-    let a = Fp12::one();
-    let out = a.__third_root();
-    assert(out == a);
+    let a = unsafe{Fp12::__random_third_root()};
+    let out = unsafe{a.__third_root()};
+    assert((out* out * out) == a);
 }
+
+
+
+#[test]
+fn test_is_third_root() {
+    let a = Fp12::one();
+    let out = unsafe{a.__is_third_root()};
+    assert(out);
+}
+
+//==================================================
+
 
 // #[test]
 // fn test_arithmetic() {
