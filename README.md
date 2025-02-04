@@ -4,7 +4,7 @@ Implementation of pairing over BLS12-381 in Noir. This uses the new [BigNum](htt
 
 ## Usage
 
-This library uses `nargo 0.35.0` and [BigNum](https://github.com/noir-lang/noir-bignum) library version `0.3.7`. 
+This library uses `nargo 0.36.0` and [BigNum](https://github.com/noir-lang/noir-bignum) library version `0.4.1`. 
 
 To do a pairing define the 2 inputs of types `G1Affine` and `G2Affine` and apply the pairing. Example:
 ```rust
@@ -16,6 +16,10 @@ To do a pairing define the 2 inputs of types `G1Affine` and `G2Affine` and apply
     let second_pairing = pairing(g, h.neg());
     assert(first_pairing.eq(second_pairing));
 ```
+
+## Attribution
+
+Forked from https://github.com/ewynx/noir_bls12_381_pairing.
 
 ## Implementation
 
@@ -42,7 +46,7 @@ Note that a good amount of the tests are commented out because they take a fair 
 
 One pairing:
 - "acir_opcodes": 1.811.140
-- "circuit_size": 2.580.893
+- "circuit_size": 2.580.893 (Mike edit: I get 3,210,945)
 
 For code snippet:
 ```rust
