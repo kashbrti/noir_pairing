@@ -61,229 +61,16 @@ pub(crate) unconstrained fn __final_exponentiation(input: Fp12) -> Fp12 {
     f
 }
 
-// this is a version of Tonneli-Shanks algorithm to compute the 3rd root of unity in Fp12
-// pub(crate) unconstrained fn __tonneli_shanks(input: Fp12) -> Fp12 {
-//     // the fixed cube non-residue w
-//     let w = Fp12 { c0: Fp6 { c0: Fp2::zero(), c1: Fp2::zero(), c2: Fp2::one() }, c1: Fp6::zero() };
-//     // write p-1 = 3^r * s
-//     // p-1 = 3^2 * (2432026985759919469138489527250808343188479017477535962521004210516136245398)
-//     let s = Mod_p12m1 {
-//         limbs: [
-//             960815080587338423254064115271022742,
-//             636026797166128075104453522897650505,
-//             1376,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//         ],
-//     };
-//     // exp = (s+1)/3
-//     let exp = Mod_p12m1 {
-//         limbs: [
-//             1206423690719056723020559411943903965,
-//             1098160929578653273637355881152779885,
-//             458,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//         ],
-//     };
-//     // x = input^exp
-//     // TODO: add the unconstrained pow function for FP12
-//     let x = input.__pow::<Mod_p12m1, 26, 3044>(exp);
-//     let x = Fp12::one();
-//     x
-// }
 
-// pub(crate) unconstrained fn __compute_c_u(input: Fp12, root: Fp12) -> (Fp12, Fp12) {
-//     // size of the eliptic curve
-//     let r = Mod_h {
-//         limbs: [
-//             269518400912893473352610297457672193,
-//             407329191355489184324853464957476136,
-//             12388,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//         ],
-//     };
-//     // m = \lambda / r
-//     let mp = Mod_h {
-//         limbs: [
-//             380619701339137369314954070087478983,
-//             900638381770635356178666924593637093,
-//             57491073411126964902845084007569698,
-//             204641051616784738639689582151228558,
-//             51156712,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//             0,
-//         ],
-//     };
-//     // q12 -1 /3
-//     let q12m1d3 = Mod_p12m1 {
-//         limbs: [
-//             773749709645826796532190312665337952,
-//             556169577781366680145342575403968448,
-//             338662837837602273038849968417709674,
-//             649974784784181656296639942879737434,
-//             934322959809948564993015723464419740,
-//             718410569223457654591420227388597347,
-//             120714237708500204881978252222144219,
-//             894746357967118343639295838608781384,
-//             321758540385573760407004815035131167,
-//             1198078347892323965896310942097904147,
-//             48297276519913451287806530039680075,
-//             818120149253187946577907807085476851,
-//             1028397470723861979406623385028248693,
-//             60894851602568325223727353130599484,
-//             818847403398564246059239689523754768,
-//             849208555487836697179689302303544872,
-//             1155354104481532730332018084191880428,
-//             178751387950528353570255663226785461,
-//             444555488440385463845065266585597781,
-//             557029168266162558454339360098305000,
-//             1068602764114782456701163924392355264,
-//             1209149799968583142924065425163794531,
-//             466886881121431428487732981577168701,
-//             1106421953966352633118231523545518408,
-//             759583639953291001740818844599549032,
-//             3276593318259,
-//         ],
-//     };
-//     // inverse of r mod h
-//     let rp = r.__invmod();
-//     // inverse of mp mod h
-//     let mpp = mp.__invmod();
-//     let mut s = 0;
-//     let d: u32 = 3;
-
-//     // check if input^((p^12-1)/3) = 1
-//     // todo ================================
-//     let res = input.__pow::<Mod_p12m1, 26, 3044>(q12m1d3);
-//     let res2: Fp12 = (input * root).__pow::<Mod_p12m1, 26, 3044>(q12m1d3);
-//     let mut f = input;
-//     let mut omega = root;
-//     if res.eq(Fp12::one()) {
-//         omega = Fp12::one();
-//     } else if res2.eq(Fp12::one().mul(root)) {
-//         omega = root;
-//         f = f.mul(root);
-//     } else {
-//         omega = root.square();
-//         f = f.mul(root.square());
-//     }
-
-//     let mut c = f.__pow::<Mod_h, 24, 2790>(rp);
-//     c = c.__pow::<Mod_h, 24, 2790>(mpp);
-//     c = __tonneli_shanks(c);
-
-//     (c, omega)
-// }
-
-// pub(crate) unconstrained fn __compute_third_root() {}
-
-// pub(crate) unconstrained fn __r_th_root() {}
-
-// pub(crate) unconstrained fn __mp_th_root() {}
-
-/// Unconstrained `Fp12::square`
-pub(crate) unconstrained fn __fp12_square(input: Fp12) -> Fp12 {
-    input.square()
+pub unconstrained fn __get_pairing_witnesses(a: Fp12)-> (Fp12, Fp12){
+    let (c_coeffs,u_coeffs) = __get_pairing_witnesses_oracle(a);
+    let c = Fp12::from_coeff(c_coeffs);
+    let u = Fp12::from_coeff(u_coeffs);
+    (c,u)
 }
 
-/// Unconstrained `Fp12::mul`
-pub(crate) unconstrained fn __fp12_mul(input1: Fp12, input2: Fp12) -> Fp12 {
-    input1.mul(input2)
-}
-
-/// Unconstrained `Fp12::frobenius_map`
-pub(crate) unconstrained fn __fp12_frobenius_map(input: Fp12) -> Fp12 {
-    input.frobenius_map()
-}
-
-/// Unconstrained `Fp12::conjugate`
-pub(crate) unconstrained fn __fp12_conjugate(input: Fp12) -> Fp12 {
-    input.conjugate()
-}
-
-/// Unconstrained `Fp12::invert`
-pub(crate) unconstrained fn __fp12_invert(input: Fp12) -> Fp12 {
-    input.invert()
+#[oracle(get_pairing_witnesses)]
+pub unconstrained fn __get_pairing_witnesses_oracle(a: Fp12)-> ([[Field; 3]; 12], [[Field; 3]; 12]){
 }
 
 // /// Unconstrained `Fp12::exponentiation`
@@ -318,6 +105,8 @@ fn fp4_square(a: Fp2, b: Fp2) -> (Fp2, Fp2) {
 
     (c0, c1)
 }
+
+
 
 /// Efficient `Fp12` square in the cyclotomic subgroup $C_{\phi^6}$
 ///
@@ -394,3 +183,14 @@ fn cycolotomic_exp(f: Fp12) -> Fp12 {
 //     let res = __fp12_exponentiation::<6>(input,exponent);
 //     assert(res == input);
 // }
+
+
+#[test]
+fn test_witness_generator(){
+    let a = Fp12::one();
+    let (c,u) = unsafe{__get_pairing_witnesses(a)};
+    println("c: ");
+    println(c);
+    println("u: ");
+    println(u);
+}

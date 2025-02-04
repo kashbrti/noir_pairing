@@ -10,7 +10,10 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::foreign_call::ForeignCallParam;
-use crate::handlers::{handle_witness_gen, handle_third_root, handle_is_third_root, handle_random_third_root};
+use crate::handlers::{
+    handle_get_pairing_witnesses, handle_is_third_root, handle_random_third_root,
+    handle_third_root, handle_witness_gen,
+};
 
 // SPIN UP THE SERVER
 #[tokio::main]
@@ -75,6 +78,7 @@ async fn run_server() -> anyhow::Result<SocketAddr> {
                 "third_root" => handle_third_root(&request.inputs),
                 "is_third_root" => handle_is_third_root(&request.inputs),
                 "random_third_root" => handle_random_third_root(&request.inputs),
+                "get_pairing_witnesses" => handle_get_pairing_witnesses(&request.inputs),
                 _ => handle_unknown_function(&request),
             };
 

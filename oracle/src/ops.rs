@@ -37,31 +37,24 @@ pub trait WitnessGeneratorTrait {
 
 impl WitnessGeneratorTrait for WitnessGenerator {
     fn witness_generator(input: Fq12) -> (Fq12, Fq12) {
-        // h = q^12 -1 /r = 27 * l
-        // lambda = 6x + 2 + q - q2 + q3
-        // m = lambda / r
-        // d = 3
-        // m' = m/d
-        // w is a 27-th root of unity
-    let w = Self::find_27th_root();
-    let mut s: u32 = 0;
+    let w = Self::find_27th_root();   
     let mut f = input;
-    if Self::pow_p12_minus_one_div_3(&f) == Fq12::one() {
-        s = 0;
+    let s: u32 = if Self::pow_p12_minus_one_div_3(&f) == Fq12::one() {
+        0
     } else if Self::pow_p12_minus_one_div_3(&(f * w)) == Fq12::one() {
-        s = 1;
         f = f * w;
+        1
     } else {
-        s = 2;
         f = f * w.pow([2]);
-    }
+        2
+    };
     // set c to be the r-th root of f
     let mut c = Self::r_th_root_of_f(f);
     // take the m'-th root of c
     c = Self::mp_th_root_of_c(c);
     // take the third root of the result
     c = Self::tonelli_shanks_third_root(c);
-    (c, w.pow([s as u64]))
+    (c, w.pow([3^s as u64]))
 }
 
  fn mp_th_root_of_c(c: Fq12) -> Fq12 {
@@ -71,17 +64,17 @@ impl WitnessGeneratorTrait for WitnessGenerator {
     // x-1 /2 = 2482830683596424440
     let q: BigUint = Fq::MODULUS.into();
     let xm1div2 = BigUint::from(2482830683596424440u64);
-    let mut lambda = xm1div2 * BigUint::from(2u64) + BigUint::one();
+    let x = xm1div2 * BigUint::from(2u64) + BigUint::one();
+    let mut lambda = BigUint::from(6u64) * x + BigUint::from(2u64);
     lambda = lambda + &q;
-    lambda = lambda - &q.pow(2);
     lambda = lambda + &q.pow(3);
-    lambda = lambda + &q * BigUint::from(6u64);
+    lambda = lambda - &q.pow(2);
     // mp = m/3
     let r: BigUint = Fr::MODULUS.into();
     let m = lambda / &r;
-    // mp = m/3
+    // // mp = m/3
     let mp = m / BigUint::from(3u64);
-    // now we invert mp mod h, where h = q^12 - 1 / r
+    // // now we invert mp mod h, where h = q^12 - 1 / r
     let h = (q.pow(12) - BigUint::one()) / &r;
     let mpp: BigUint = Self::invert(&mp, &h).to_biguint().unwrap();
     // cast mpp to a bigint
@@ -108,6 +101,7 @@ impl WitnessGeneratorTrait for WitnessGenerator {
     let res = f.pow(inv_r_bigint);
     res
 }
+
 
 
  fn extended_gcd(_a: &BI, _b: &BI) -> (BI, BI, BI) {
@@ -229,6 +223,26 @@ fn rand_third_root() -> Fq12 {
 
 }
 
+
+
+#[test]
+fn test_mp_th_root_of_c() {
+    let mut rng = ark_std::test_rng();
+    let a = Fq12::rand(&mut rng);
+    let res = WitnessGenerator::mp_th_root_of_c(a);
+    println!("res: {:?}", res);
+}
+
+#[test]
+fn test_r_th_root_of_f() {
+    let mut rng = ark_std::test_rng();
+    let a = Fq12::rand(&mut rng);
+    let res = WitnessGenerator::r_th_root_of_f(a);
+    println!("res: {:?}", res);
+}
+
+
+
 #[test]
 fn test_pow_p12_minus_one_div_3() {
     let mut rng = ark_std::test_rng();
@@ -270,15 +284,6 @@ fn test_pow_fq12() {
     assert_eq!(res, Fq12::one());
 }
 
-#[test]
-fn test_get_order_2() {
-    let mut rng = ark_std::test_rng();
-    let a = Fq12::rand(&mut rng);
-    let p = (-Fq12::one())
-        .to_base_prime_field_elements()
-        .collect::<Vec<_>>();
-    println!("p: {:?}", p);
-}
 
 #[test]
 fn test_find_third_non_residue() {
@@ -333,13 +338,14 @@ fn test_witness_generator() {
 }
 
 #[test]
-fn test_r_th_root_of_f() {
+fn test_r_th_root_of_f_2() {
     let mut rng = ark_std::test_rng();
     let a = Fq12::rand(&mut rng);
     let res = WitnessGenerator::r_th_root_of_f(a);
-    let r = Fr::MODULUS;
-    println!("r: {:?}", r);
-    assert_eq!(res.pow(r), a);
+    let r : BigUint = Fr::MODULUS.into();
+    println!("res: {:?}", res);
+    let res2 = res.pow(BigInt::<50>::try_from(r).unwrap());
+    println!("res2: {:?}", res2);
 }
 
 // export the witness generator as a module

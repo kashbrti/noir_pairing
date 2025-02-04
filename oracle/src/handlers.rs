@@ -1,6 +1,6 @@
 use ark_bn254::Fr;
+use ark_bn254::{Fq, Fq12, Fq2, Fq6};
 use ark_ff::Zero;
-use ark_bn254::{Fq, Fq12, Fq6 , Fq2};
 use jsonrpsee::core::params;
 use num_bigint::BigInt;
 use num_bigint::BigUint;
@@ -9,9 +9,8 @@ use serde_json::{json, Value};
 // use std::str::FromStr;
 
 use crate::foreign_call::ForeignCallParam;
-use crate::ops::witness_generator::WitnessGeneratorTrait;
 use crate::ops::witness_generator::WitnessGenerator;
-
+use crate::ops::witness_generator::WitnessGeneratorTrait;
 
 // a struct that emulates the bignum Params params from the params.nr file
 struct Params {
@@ -23,25 +22,20 @@ struct Params {
 
 /**** THERE'S A LOT OF BOILERPLATE INSIDE THESE "HANDLERS", THAT WE CAN PROBABLY PUT INTO COMMON HELPER FUNCTIONS ****/
 
-
 pub(crate) fn handle_witness_gen(inputs: &Vec<ForeignCallParam<String>>) -> Value {
     Value::String("Hello, world!".to_string())
 }
 
-
 pub(crate) fn handle_third_root(inputs: &Vec<ForeignCallParam<String>>) -> Value {
-    // the input has 12 elements, each a bignum representing an FP element 
-    // now we cast the bignums to bigUints 
+    // the input has 12 elements, each a bignum representing an FP element
+    // now we cast the bignums to bigUints
     let fp12 = get_fq12_from_callparam(inputs);
-    let result = WitnessGenerator::tonelli_shanks_third_root(fp12); 
+    let result = WitnessGenerator::tonelli_shanks_third_root(fp12);
     let results_formatted = cast_fp12_to_noir_fp12(result);
     let return_vec: Vec<Vec<String>> = vec![results_formatted];
     let json_response = json!({"values" : return_vec});
     json_response
-    
-    
 }
-
 
 pub(crate) fn handle_is_third_root(inputs: &Vec<ForeignCallParam<String>>) -> Value {
     let fp12 = get_fq12_from_callparam(inputs);
@@ -60,8 +54,6 @@ pub(crate) fn handle_is_third_root(inputs: &Vec<ForeignCallParam<String>>) -> Va
     json_response
 }
 
-
-
 pub(crate) fn handle_random_third_root(inputs: &Vec<ForeignCallParam<String>>) -> Value {
     let result = WitnessGenerator::rand_third_root();
     let results_formatted = cast_fp12_to_noir_fp12(result);
@@ -70,8 +62,15 @@ pub(crate) fn handle_random_third_root(inputs: &Vec<ForeignCallParam<String>>) -
     json_response
 }
 
-
-
+pub(crate) fn handle_get_pairing_witnesses(inputs: &Vec<ForeignCallParam<String>>) -> Value {
+    let fp12 = get_fq12_from_callparam(inputs);
+    let (c, u) = WitnessGenerator::witness_generator(fp12);
+    let c_formatted = cast_fp12_to_noir_fp12(c);
+    let u_formatted = cast_fp12_to_noir_fp12(u);
+    let return_vec: Vec<Vec<String>> = vec![c_formatted, u_formatted];
+    let json_response = json!({"values" : return_vec});
+    json_response
+}
 
 pub fn get_fq12_from_callparam(inputs: &Vec<ForeignCallParam<String>>) -> Fq12 {
     let mut biguints: Vec<Fq> = vec![];
@@ -79,30 +78,46 @@ pub fn get_fq12_from_callparam(inputs: &Vec<ForeignCallParam<String>>) -> Fq12 {
         let biguint = cast_to_biguint(callparam_to_string(input));
         biguints.push(Fq::from(biguint));
     }
-    // now cast these into an ark_ff::Fq12 element 
-    let fp12 = Fq12{
-         c0: Fq6 {
-            c0: Fq2 {c0: biguints[0], c1: biguints[1]}, 
-            c1: Fq2 {c0: biguints[2], c1: biguints[3]}, 
-            c2: Fq2 {c0: biguints[4], c1: biguints[5]} }, 
-            c1: Fq6 {
-                c0: Fq2 {c0: biguints[6], c1: biguints[7]}, 
-                c1: Fq2 {c0: biguints[8], c1: biguints[9]}, 
-                c2: Fq2 {c0: biguints[10], c1: biguints[11]} 
-            }
-        }; 
+    // now cast these into an ark_ff::Fq12 element
+    let fp12 = Fq12 {
+        c0: Fq6 {
+            c0: Fq2 {
+                c0: biguints[0],
+                c1: biguints[1],
+            },
+            c1: Fq2 {
+                c0: biguints[2],
+                c1: biguints[3],
+            },
+            c2: Fq2 {
+                c0: biguints[4],
+                c1: biguints[5],
+            },
+        },
+        c1: Fq6 {
+            c0: Fq2 {
+                c0: biguints[6],
+                c1: biguints[7],
+            },
+            c1: Fq2 {
+                c0: biguints[8],
+                c1: biguints[9],
+            },
+            c2: Fq2 {
+                c0: biguints[10],
+                c1: biguints[11],
+            },
+        },
+    };
     fp12
 }
 
-
-
-
 pub(crate) fn cast_fp12_to_noir_fp12(input: Fq12) -> Vec<String> {
-    // we have a 2 over 3 over 2 field element, so we need to extract the limbs 
+    // we have a 2 over 3 over 2 field element, so we need to extract the limbs
     let limbs: Vec<BigUint> = vec![
         input.c0.c0.c0.into(),
         input.c0.c0.c1.into(),
-        input.c0.c1.c0.into(), 
+        input.c0.c1.c0.into(),
         input.c0.c1.c1.into(),
         input.c0.c2.c0.into(),
         input.c0.c2.c1.into(),
@@ -111,7 +126,7 @@ pub(crate) fn cast_fp12_to_noir_fp12(input: Fq12) -> Vec<String> {
         input.c1.c1.c0.into(),
         input.c1.c1.c1.into(),
         input.c1.c2.c0.into(),
-        input.c1.c2.c1.into()
+        input.c1.c2.c1.into(),
     ];
 
     let mut results_formatted: Vec<String> = vec![];
@@ -123,7 +138,6 @@ pub(crate) fn cast_fp12_to_noir_fp12(input: Fq12) -> Vec<String> {
     }
     results_formatted
 }
-
 
 pub(crate) fn cast_to_biguint(input_strings: Vec<&str>) -> BigUint {
     // split the limbs
@@ -253,6 +267,3 @@ impl std::fmt::Debug for Params {
         write!(f, "Params {{ has_multiplicative_inverse: {:?}, modulus: {:?}, double_modulus: {:?}, redc_param: {:?}", self.has_multiplicative_inverse, self.modulus, self.double_modulus, self.redc_param)
     }
 }
-
-
-
