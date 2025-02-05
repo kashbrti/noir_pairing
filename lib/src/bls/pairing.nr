@@ -167,7 +167,6 @@ pub fn miller_loop(p: G1Affine, q: G2Affine) -> Fp12 {
     f = f.sparse_mul(ell_coeffs.scale_by_affine(adder_p));
 
     f = f.conjugate();
-    println(f);
     f
 }
 

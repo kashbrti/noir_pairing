@@ -207,7 +207,7 @@ impl Fp2 {
     /// Multiplies the element by a non-residue of power 1
     ///
     /// Reference Document: https://hackmd.io/@Wimet/ry7z1Xj-2#Frobenius-Operator
-    fn mul_by_non_residue_power_1(self: Self) -> Self {
+    pub fn mul_by_non_residue_power_1(self: Self) -> Self {
         let y = Fp2::new(
             [426377461259128476197171212816344176, 950761433168210257943908058976182364, 4740],
             [631238624071726213905819414132122284, 783787493034767597529245196718149236, 9321],
@@ -219,7 +219,7 @@ impl Fp2 {
     /// Multiplies the element by a non-residue of power 2
     ///
     /// Reference Document: https://hackmd.io/@Wimet/ry7z1Xj-2#Frobenius-Operator
-    fn mul_by_non_residue_power_2(self: Self) -> Self {
+    pub fn mul_by_non_residue_power_2(self: Self) -> Self {
         let y = Fp2::new(
             [730877957994261685262562863694697789, 371742299709972197061924180894761911, 12211],
             [904313815760113414035932210111957922, 1190666331444014455945460071356929074, 5833],
@@ -231,7 +231,7 @@ impl Fp2 {
     /// Multiplies the element by a non-residue of power 3
     ///
     /// Reference Document: https://hackmd.io/@Wimet/ry7z1Xj-2#Frobenius-Operator
-    fn mul_by_non_residue_power_3(self: Self) -> Self {
+    pub fn mul_by_non_residue_power_3(self: Self) -> Self {
         let y = Fp2::new(
             [887252555323038411621405899505013594, 1261835301057603723149303145102424539, 1596],
             [667165268406215768209883118386262243, 315364551883617340788418358721588001, 1984],
@@ -242,7 +242,7 @@ impl Fp2 {
     /// Multiplies the element by a non-residue of power 4
     ///
     /// Reference Document: https://hackmd.io/@Wimet/ry7z1Xj-2#Frobenius-Operator
-    fn mul_by_non_residue_power_4(self: Self) -> Self {
+    pub fn mul_by_non_residue_power_4(self: Self) -> Self {
         let y = Fp2::new(
             [266875291493575529387049817426798434, 412105995003785042396868112665183443, 1461],
             [694853336217345651450901527565926694, 492536132578680416344610139344245302, 11284],
@@ -253,13 +253,47 @@ impl Fp2 {
     /// Multiplies the element by a non-residue of power 5
     ///
     /// Reference Document: https://hackmd.io/@Wimet/ry7z1Xj-2#Frobenius-Operator
-    fn mul_by_non_residue_power_5(self: Self) -> Self {
+    pub fn mul_by_non_residue_power_5(self: Self) -> Self {
         let y = Fp2::new(
             [479103104124920441723708103336618287, 1006804826950535178307367240931996738, 387],
             [668743480999689269792587498111380555, 1260642313736059160892374157579222448, 4780],
         );
         self.mul(y)
     }
+
+    // to do add the mul_by_non_residue_2_pow_{1,2,3,4,5}
+    // non_res_2_i = non_res_i * non_res_i.conjugate() 
+    // so multiplying a by non_res_2_i is the same as multiplying a.conjugate() by non_res_i, conjugating it and then multiplying by non_res_i again 
+    // these will be used in the miller loop and to get higher degree frobenius maps
+    // to do add the mul_by_non_residue_3_pow_{1,2,3,4,5}
+    // these will be used in the miller loop and to get higher degree frobenius maps
+    // these values are "real numbers", i.e. there is no u in them
+    pub fn mul_by_non_residue_2_power_1(self: Self) -> Self {
+        let scalar = Fp {limbs : [742632800561498340512714380273319241, 407329191355487526249269639571615938, 12388]; 
+        Self::scale(self, scalar)
+    }
+
+    pub fn mul_by_non_residue_2_power_2(self: Self) -> Self {
+        let scalar = Fp {limbs : [742632800561498340512714380273319240, 407329191355487526249269639571615938, 12388]}; 
+        Self::scale(self, scalar)
+    }   
+
+    pub fn mul_by_non_residue_2_power_3(self: Self) -> Self {
+        let scalar = Fp {limbs: [671967750576550571863734675757137222, 407329191355489184324853464957476247, 12388]}; 
+        Self::scale(self, scalar)
+    }
+
+    pub fn mul_by_non_residue_2_power_4(self: Self) -> Self {
+        let scalar = Fp {limbs: [1258562945799968104254827355764162558, 1658075583825385860308, 0]}; 
+        Self::scale(self, scalar)
+    }
+
+    pub fn mul_by_non_residue_2_power_5(self: Self) -> Self {
+        let scalar = Fp {limbs: [1258562945799968104254827355764162559, 1658075583825385860308, 0]}; 
+        Self::scale(self, scalar)
+    }
+
+
 
     /// Returns the conjugate of the element.
     ///

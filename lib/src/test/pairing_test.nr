@@ -511,7 +511,7 @@ fn test_miller_loop_gh() {
     assert(res.eq(expected_res));
 }
 
-// #[test]
+#[test]
 fn test_miller_loop_expected_generator() {
     // Testing intermediate step, expected value from zkcrypto impl
     // test values from https://github.com/zkcrypto/bls12_381/blob/main/src/pairings.rs#L835

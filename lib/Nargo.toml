@@ -1,5 +1,5 @@
 [package]
-name = "bls12_381_pairing"
+name = "noir_pairing"
 type = "lib"
 authors = [""]
 compiler_version = ">=0.36.0"

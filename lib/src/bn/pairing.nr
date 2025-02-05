@@ -122,66 +122,53 @@ pub(crate) fn doubling_step(r: G2Projective) -> (Ell, G2Projective) {
 
 /// Evaluates the Miller loop.
 pub fn miller_loop(p: G1Affine, q: G2Affine) -> Fp12 {
-    // BLS12-381 'X' parameter transformed from binary to boolean array
-    // let booleans = [
-    //     false, true, true, false, true, false, false, true, false, false, false, false, false,
-    //     false, false, false, true, false, false, false, false, false, false, false, false, false,
-    //     false, false, false, false, false, false, false, false, false, false, false, false, false,
-    //     false, false, false, false, false, false, false, false, false, true, false, false, false,
-    //     false, false, false, false, false, false, false, false, false, false, false, false,
-    // ];
-
-    let mut adder_cur = G2Projective::from_affine(q);
-    let mut adder_base = q;
-    let mut adder_p = p;
-    let mut f = Fp12::one();
-    let mut found_one = false;
-
+    // the global NAF_DIGITS is a 66 ternery representation of r
+    let mut t = q; 
+    let mut t_projective = G2Projective::from_affine(t); 
+    let mut f = Fp12::one(); 
     for i in 0..66 {
-        let i_NAF = NAF_DIGIT[i];
-        if !found_one {
-            found_one = (i_NAF != 0);
-        } else {
-            // Doubling step receives f. Does 2 things: doubling_step function & ell function
-            let (ell_coeffs, cur_updated) = doubling_step(adder_cur);
-
-            adder_cur = cur_updated;
-
-            // updates f
-            f = f.sparse_mul(ell_coeffs.scale_by_affine(adder_p));
-
-            if i_NAF == 1 {
-                // addition_step receives f & does 2 things: addition_step & ell function
-                // negate the G2 point before adding
-                let (ell_coeffs, cur_updated) = addition_step(adder_cur, adder_base);
-
-                adder_cur = cur_updated;
-                // ell updates f
-                f = f.sparse_mul(ell_coeffs.scale_by_affine(adder_p));
-            }
-            else if i_NAF == 2 {
-
-                let (ell_coeffs, cur_updated) = addition_step(adder_cur, adder_base.neg());
-
-                adder_cur = cur_updated;
-                // ell updates f
-                f = f.sparse_mul(ell_coeffs.scale_by_affine(adder_p));
-            }
-
-            f = f.square();
+        let (ell_coeffs, new_t_projective) = doubling_step(t_projective); 
+        f = f.sparse_mul(ell_coeffs.scale_by_affine(p)); 
+        t_projective = new_t_projective; 
+        // if the i-th digit is 1, we do the addition step 
+        if NAF_DIGIT[i] == 1 {
+            let (ell_coeffs, new_t_projective) = addition_step(t_projective, q); 
+            t_projective = new_t_projective; 
+            f = f.sparse_mul(ell_coeffs.scale_by_affine(p)); 
+        }else if NAF_DIGIT[i] == 2 {
+            // we negate point q and do the addition step 
+            let (ell_coeffs, new_t_projective) = addition_step(t_projective, q.neg()); 
+            t_projective = new_t_projective; 
+            f = f.sparse_mul(ell_coeffs.scale_by_affine(p)); 
         }
     }
+    // the two final steps of the miller loop 
+    //Q1 <- pi_p(Q);
+    let mut q1x = q.x.conjugate();
+    let mut q1y = q.y.conjugate();
+    q1x = q1x.mul_by_non_residue_power_2();
+    q1y = q1y.mul_by_non_residue_power_3();
+    let q1 = G2Affine {x : q1x, y : q1y, infinity : false}; 
 
-    // Doubling step receives f. Does 2 things: doubling_step function & ell function
-    let (ell_coeffs, cur_updated) = doubling_step(adder_cur);
-    adder_cur = cur_updated;
-    // ell updates f
-    f = f.sparse_mul(ell_coeffs.scale_by_affine(adder_p));
+    // // Q2 <- pi_p_square(Q);
+    let mut q2x = q.x.mul_by_non_residue_2_power_2();
+    let mut q2y = q.y.mul_by_non_residue_2_power_3();
+    q2y = q2y.neg();
+    let q2 = G2Affine {x : q2x, y : q2y, infinity : false}; 
+    
+    // // Line eval with Q1
+    let (ell_coeffs, new_t_projective) = addition_step(t_projective, q1);
+    f = f.sparse_mul(ell_coeffs.scale_by_affine(p)); 
+    t_projective = new_t_projective; 
+    
+    // // Line eval with Q2
+    let (ell_coeffs, new_t_projective) = addition_step(t_projective, q2);
+    f = f.sparse_mul(ell_coeffs.scale_by_affine(p)); 
+    t_projective = new_t_projective; 
 
-    f = f.conjugate();
-    println(f);
     f
 }
+
 
 
 
