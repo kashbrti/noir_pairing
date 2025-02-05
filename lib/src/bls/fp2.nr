@@ -27,12 +27,12 @@ impl Fp2 {
 
     /// Constructs the additive unit (zero) element.
     pub fn zero() -> Fp2 {
-        Fp2 { c0: BigNum::new(), c1: BigNum::new() }
+        Fp2 { c0: BigNum::zero(), c1: BigNum::zero() }
     }
 
     /// Constructs the multiplicative unit (one) element.
     pub fn one() -> Fp2 {
-        Fp2 { c0: BigNum::one(), c1: BigNum::new() }
+        Fp2 { c0: BigNum::one(), c1: BigNum::zero() }
     }
 
     /// Returns the element's additive inverse (negation).
@@ -42,7 +42,7 @@ impl Fp2 {
 
     /// Returns true if both coefficients are zero.
     pub fn is_zero(self: Self) -> bool {
-        (self.c0 == BigNum::new()) & (self.c1 == BigNum::new())
+        (self.c0 == BigNum::zero()) & (self.c1 == BigNum::zero())
     }
 
     /// Returns the square of the element.
@@ -79,7 +79,7 @@ impl Fp2 {
             // Constrain res_c1
             let lhs_terms1 = [[self.c0, self.c0]];
             let lhs_flags1 = [[false, false]];
-            let rhs_terms1 = [[self.c1, BigNum::new()]];
+            let rhs_terms1 = [[self.c1, BigNum::zero()]];
             let rhs_flags1 = [[false, false]];
             let res1 = [res_c1];
             let res_flag1 = [true];
@@ -244,10 +244,10 @@ impl std::ops::Mul for Fp2 {
             // c1 = (self.c0 + self.c1) * (other.c0 + other.c1) - self.c0 * other.c0 - self.c1 * other.c1
             // (adding zeroes for compilation)
             let lhs_terms1 =
-                [[self.c0, self.c1], [self.c0, BigNum::new()], [self.c1, BigNum::new()]];
+                [[self.c0, self.c1], [self.c0, BigNum::zero()], [self.c1, BigNum::zero()]];
             let lhs_flags1 = [[false, false], [true, false], [true, false]];
             let rhs_terms1 =
-                [[other.c0, other.c1], [other.c0, BigNum::new()], [other.c1, BigNum::new()]];
+                [[other.c0, other.c1], [other.c0, BigNum::zero()], [other.c1, BigNum::zero()]];
             let rhs_flags1 = [[false, false], [false, false], [false, false]];
             let res1 = [c1];
             let res_flag1 = [true];
@@ -294,8 +294,8 @@ fn test_mul_1() {
 
     // test multiplication by 0
     let mult_by_0 = test_val.mul(zero);
-    assert(mult_by_0.c0 == BigNum::new());
-    assert(mult_by_0.c1 == BigNum::new());
+    assert(mult_by_0.c0 == BigNum::zero());
+    assert(mult_by_0.c1 == BigNum::zero());
 }
 
 #[test]

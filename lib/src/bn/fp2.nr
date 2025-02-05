@@ -1,6 +1,7 @@
 use bignum::BigNum;
 use bignum::fields::bn254Fq::BN254_Fq_Params;
 
+use crate::bn::g2::G2Affine;
 /// Field Element in BN254
 ///
 /// Uses `BigNum` with 3 limbs, 254 bit modulus, and BN254 parameters defined in `noir-bignum`.
@@ -33,12 +34,12 @@ pub trait ExtensionFieldTrait {
 impl ExtensionFieldTrait for Fp2 {
     /// Constructs the additive unit (zero) element.
     fn zero() -> Fp2 {
-        Fp2 { c0: BigNum::new(), c1: BigNum::new() }
+        Fp2 { c0: BigNum::zero(), c1: BigNum::zero() }
     }
 
     /// Constructs the multiplicative unit (one) element.
     fn one() -> Fp2 {
-        Fp2 { c0: BigNum::one(), c1: BigNum::new() }
+        Fp2 { c0: BigNum::one(), c1: BigNum::zero() }
     }
 
     /// Returns the element's additive inverse (negation).
@@ -91,7 +92,7 @@ impl ExtensionFieldTrait for Fp2 {
             // Constrain res_c1
             let lhs_terms1 = [[self.c0, self.c0]];
             let lhs_flags1 = [[false, false]];
-            let rhs_terms1 = [[self.c1, BigNum::new()]];
+            let rhs_terms1 = [[self.c1, BigNum::zero()]];
             let rhs_flags1 = [[false, false]];
             let res1 = [res_c1];
             let res_flag1 = [true];
@@ -188,7 +189,7 @@ impl Fp2 {
 
     /// Returns true if both coefficients are zero.
     pub fn is_zero(self: Self) -> bool {
-        (self.c0 == BigNum::new()) & (self.c1 == BigNum::new())
+        (self.c0 == BigNum::zero()) & (self.c1 == BigNum::zero())
     }
 
 
@@ -294,7 +295,6 @@ impl Fp2 {
     }
 
 
-
     /// Returns the conjugate of the element.
     ///
     /// Functionally, this inverts the exponent `1` coefficient, not changing the constant.
@@ -368,10 +368,10 @@ impl std::ops::Mul for Fp2 {
             // c1 = (self.c0 + self.c1) * (other.c0 + other.c1) - self.c0 * other.c0 - self.c1 * other.c1
             // (adding zeroes for compilation)
             let lhs_terms1 =
-                [[self.c0, self.c1], [self.c0, BigNum::new()], [self.c1, BigNum::new()]];
+                [[self.c0, self.c1], [self.c0, BigNum::zero()], [self.c1, BigNum::zero()]];
             let lhs_flags1 = [[false, false], [true, false], [true, false]];
             let rhs_terms1 =
-                [[other.c0, other.c1], [other.c0, BigNum::new()], [other.c1, BigNum::new()]];
+                [[other.c0, other.c1], [other.c0, BigNum::zero()], [other.c1, BigNum::zero()]];
             let rhs_flags1 = [[false, false], [false, false], [false, false]];
             let res1 = [c1];
             let res_flag1 = [true];
@@ -418,8 +418,8 @@ impl std::cmp::Eq for Fp2 {
 
 //     // test multiplication by 0
 //     let mult_by_0 = test_val.mul(zero);
-//     assert(mult_by_0.c0 == BigNum::new());
-//     assert(mult_by_0.c1 == BigNum::new());
+//     assert(mult_by_0.c0 == BigNum::zero());
+//     assert(mult_by_0.c1 == BigNum::zero());
 // }
 
 #[test]
@@ -505,6 +505,8 @@ fn test_mul_by_nonresidue() {
     println(d);
     assert(d == Fp2::new([8, 0, 0], [10, 0, 0]));
 }
+
+
 
 // #[test]
 // fn test_mul_by_non_residue_power() {
@@ -615,40 +617,23 @@ fn test_mul_by_nonresidue() {
 //     assert(res.c1 == c.c1);
 // }
 
-// #[test]
-// fn test_square() {
-//     let a = Fp2::new(
-//         [
-//         0xae4a11560fd2b96a09231943c6dab,
-//         0xd18b53078ed5d3f5cadea0c65f2734,
-//         0xff3ed67578ddeae5439da2b02eab31,
-//         0x8ccec
-//     ],
-//         [
-//         0x38f87f1c9644538b4bf7ec8dee1be9,
-//         0x5fb2ff8fddcf6fbb096adcc2b04bfc,
-//         0x56170fab6f325e416abe497d9e055d,
-//         0xbd355
-//     ]
-//     );
-//     let c = Fp2::new(
-//         [
-//         0x4579a52cfa8b4f01e3fc00c5962be5,
-//         0x45b3857ffd05157321b22d5a04c013,
-//         0xb7e3b626ce947b122db3425e68ae97,
-//         0xfc9d8
-//     ],
-//         [
-//         0x8fd0966dcadba0b5f86e4c5ffa1da2,
-//         0x18864f9cef0cf179640918b4d31a73,
-//         0xf2af61549b350ae4025242be1008a6,
-//         0x325f3
-//     ]
-//     );
-//     let res = a.square();
-//     assert(res.c0 == c.c0);
-//     assert(res.c1 == c.c1);
-// }
+#[test]
+fn test_square() {
+    let a = Fp2::new(
+       [1063446366501839817078329817822074235, 230867573828178815151518278807573427, 10261],
+       [1156120578102822519335034680319930867, 679962385906950584316579841841131573, 10901]
+    );
+    let c = Fp2::new(
+       [1244722558412231213340134841186761525, 901476714442930890612068891231551225, 5203]
+        ,[36522217147040627333391155720003709, 441030275709581953118298037245076408, 11870]
+    );
+    let res = a.square();
+    assert(res == a*a); 
+    println(c); 
+    println(res);
+    assert(res.c0 == c.c0);
+    assert(res.c1 == c.c1);
+}
 
 // #[test]
 // fn test_inversion() {
@@ -689,3 +674,15 @@ fn test_mul_by_nonresidue() {
 //     assert(identity_check.eq(Fp2::one()));
 // }
 
+
+
+#[test] 
+fn test_overflow() { 
+    let p0 = G2Affine::generator(); 
+    println(p0.x); 
+    println(p0.y); 
+    p0.x.c0.validate_in_field(); 
+    p0.x.c1.validate_in_field(); 
+    p0.y.c0.validate_in_field(); 
+    p0.y.c1.validate_in_field(); 
+}

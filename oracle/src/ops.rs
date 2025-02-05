@@ -223,6 +223,20 @@ fn rand_third_root() -> Fq12 {
 
 }
 
+// does the final exponentiation of a Fq12 element
+pub fn final_exponentiation(f: Fq12) -> Fq12 {
+    // compute p^12 -1 /r 
+    let p = Fq::MODULUS;
+    let r: BigUint = Fr::MODULUS.into();
+    let p_biguint: BigUint = p.into();
+    let p12 = p_biguint.pow(12);
+    let p12m1divr = (p12 - BigUint::one()) / &r;
+    // now we cast this into bigint 
+    let p12m1divr_bigint: BigInt<50> = BigInt::<50>::try_from(p12m1divr).unwrap();
+    let res = f.pow(p12m1divr_bigint);
+    res
+}
+
 
 
 #[test]

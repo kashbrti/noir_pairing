@@ -92,6 +92,10 @@ pub(crate) fn doubling_step(r: G2Projective) -> (Ell, G2Projective) {
     let mut tmp0 = r.x.square();
     let mut tmp1 = r.y.square();
     let mut tmp2 = tmp1.square();
+    println("tmp1"); 
+    println(tmp1); 
+    println("r.x"); 
+    println(r.x); 
     let mut tmp3 = ((tmp1 + r.x).square()).sub(tmp0).sub(tmp2);
     tmp3 = tmp3.add(tmp3);
     let tmp4 = tmp0.add(tmp0).add(tmp0);
@@ -126,7 +130,9 @@ pub fn miller_loop(p: G1Affine, q: G2Affine) -> Fp12 {
     let mut t = q; 
     let mut t_projective = G2Projective::from_affine(t); 
     let mut f = Fp12::one(); 
-    for i in 0..66 {
+    for i in 0..64 {
+        println("i"); 
+        println(i); 
         let (ell_coeffs, new_t_projective) = doubling_step(t_projective); 
         f = f.sparse_mul(ell_coeffs.scale_by_affine(p)); 
         t_projective = new_t_projective; 
@@ -165,7 +171,6 @@ pub fn miller_loop(p: G1Affine, q: G2Affine) -> Fp12 {
     let (ell_coeffs, new_t_projective) = addition_step(t_projective, q2);
     f = f.sparse_mul(ell_coeffs.scale_by_affine(p)); 
     t_projective = new_t_projective; 
-
     f
 }
 
@@ -199,3 +204,30 @@ fn test_miller_loop_ghe() {
     println(f); 
 }
 
+
+// this is a function only used for testing the output of the miller loop
+#[oracle(final_exponentiation)]
+pub unconstrained fn final_exponentiation_oracle(f: Fp12) -> [[Field; 3]; 12] {
+}
+
+pub unconstrained fn __final_exponentiation(f: Fp12) -> Fp12 {
+    let res = final_exponentiation_oracle(f); 
+    let res_fp12 = Fp12::from_coeff(res); 
+    res_fp12
+}
+
+#[test]
+fn test_final_exponentiation() {
+    let f = Fp12::one(); 
+    let g = unsafe{__final_exponentiation(f)}; 
+    println(g); 
+}
+
+#[test]
+fn test_miller_loop_with_final_exponentiation() {
+    let p = G1Affine::generator(); 
+    let q = G2Affine::generator(); 
+    let f = miller_loop(p, q); 
+    let g = final_exponentiation(f); 
+    println(g); 
+}

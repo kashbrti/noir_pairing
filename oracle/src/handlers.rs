@@ -11,7 +11,7 @@ use serde_json::{json, Value};
 use crate::foreign_call::ForeignCallParam;
 use crate::ops::witness_generator::WitnessGenerator;
 use crate::ops::witness_generator::WitnessGeneratorTrait;
-
+use crate::ops::final_exponentiation; 
 // a struct that emulates the bignum Params params from the params.nr file
 struct Params {
     has_multiplicative_inverse: bool,
@@ -68,6 +68,16 @@ pub(crate) fn handle_get_pairing_witnesses(inputs: &Vec<ForeignCallParam<String>
     let c_formatted = cast_fp12_to_noir_fp12(c);
     let u_formatted = cast_fp12_to_noir_fp12(u);
     let return_vec: Vec<Vec<String>> = vec![c_formatted, u_formatted];
+    let json_response = json!({"values" : return_vec});
+    json_response
+}
+
+
+pub(crate) fn handle_final_exponentiation(inputs: &Vec<ForeignCallParam<String>>) -> Value {
+    let input_fp12 = get_fq12_from_callparam(inputs);
+    let result = final_exponentiation(input_fp12);
+    let results_formatted = cast_fp12_to_noir_fp12(result);
+    let return_vec: Vec<Vec<String>> = vec![results_formatted];
     let json_response = json!({"values" : return_vec});
     json_response
 }
